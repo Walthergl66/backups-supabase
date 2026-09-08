@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Iniciar sesión — Supabase Backups{% endblock %}
+{% block content %}
+<div class="max-w-sm mx-auto mt-16 bg-white rounded-lg shadow p-6">
+  <h1 class="text-xl font-bold mb-1">Administración de backups</h1>
+  <p class="text-sm text-slate-500 mb-4">Acceso restringido. Introduce tus credenciales.</p>
+  {% if err_msg %}
+    <div class="mb-4 rounded border border-red-300 bg-red-50 text-red-800 px-4 py-2 text-sm">{{ err_msg }}</div>
+  {% endif %}
+  <form method="post" action="/login" class="space-y-4">
+    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+    <div>
+      <label class="block text-sm font-medium mb-1">Usuario</label>
+      <input name="username" required autocomplete="username"
+             class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+    </div>
+    <div>
+      <label class="block text-sm font-medium mb-1">Contraseña</label>
+      <input name="password" type="password" required autocomplete="current-password"
+             class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+    </div>
+    <button class="w-full rounded bg-cyan-700 hover:bg-cyan-800 text-white py-2 text-sm font-semibold">
+      Entrar
+    </button>
+  </form>
+</div>
+{% endblock %}

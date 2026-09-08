@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Supabase Backups{% endblock %}
+{% block content %}
+
+<h1 class="text-2xl font-bold mb-4">Dashboard</h1>
+
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+  <div class="bg-white rounded-lg shadow p-4">
+    <div class="text-2xl font-bold">{{ dashboard.cuentas }}</div>
+    <div class="text-sm text-slate-500">Cuentas</div>
+  </div>
+  <div class="bg-white rounded-lg shadow p-4">
+    <div class="text-2xl font-bold">{{ dashboard.proyectos }}</div>
+    <div class="text-sm text-slate-500">Proyectos activos</div>
+  </div>
+  <div class="bg-white rounded-lg shadow p-4">
+    <div class="text-2xl font-bold">{{ dashboard.backups_ok }}</div>
+    <div class="text-sm text-emerald-600">Backups OK</div>
+  </div>
+  <div class="bg-white rounded-lg shadow p-4">
+    <div class="text-2xl font-bold">{{ dashboard.backups_error }}</div>
+    <div class="text-sm text-red-600">Backups fallidos</div>
+  </div>
+</div>
+
+<div class="grid md:grid-cols-2 gap-6">
+  <div class="bg-white rounded-lg shadow overflow-hidden">
+    <div class="px-4 py-3 border-b bg-slate-50 flex items-center justify-between">
+      <span class="font-semibold text-sm">Proyectos activos</span>
+      <a href="/projects" class="text-sm text-cyan-700 hover:underline">Ver todos</a>
+    </div>
+    <div class="p-4">
+      {% if dashboard.projects %}
+      <table class="w-full text-sm">
+        <thead><tr class="text-left text-slate-500"><th class="pb-2">Slug</th><th class="pb-2">Último backup</th></tr></thead>
+        <tbody>
+          {% for p in dashboard.projects %}
+          <tr class="border-t">
+            <td class="py-1.5">{{ p.slug }}</td>
+            <td class="py-1.5 text-slate-500">{{ p.ultimo_backup or 'sin backups' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+        <p class="text-sm text-slate-500">Sin proyectos activos.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="bg-white rounded-lg shadow overflow-hidden">
+    <div class="px-4 py-3 border-b bg-slate-50 flex items-center justify-between">
+      <span class="font-semibold text-sm">Auditoría reciente</span>
+      <a href="/audit" class="text-sm text-cyan-700 hover:underline">Ver todo</a>
+    </div>
+    <div class="p-4">
+      {% if recent_audit %}
+      <ul class="divide-y text-sm">
+        {% for a in recent_audit %}
+        <li class="py-1.5 flex justify-between gap-2">
+          <span class="truncate">
+            <span class="font-mono text-xs">{{ a.accion }}</span>
+            <span class="text-slate-500">— {{ a.detalle or '' }}</span>
+          </span>
+          <span class="text-slate-400 text-xs whitespace-nowrap">{{ a.timestamp }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+        <p class="text-sm text-slate-500">Sin actividad registrada.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% endblock %}

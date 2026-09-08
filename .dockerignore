@@ -1,0 +1,10 @@
+.env
+.git
+.gitignore
+data/
+*.pyc
+__pycache__/
+.venv/
+venv/
+README.md
+prompt-bot-supabase-backups.md

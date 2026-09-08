@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Cuenta — Supabase Backups{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-4">{{ 'Nueva cuenta' if not account else 'Editar cuenta' }}</h1>
+
+<div class="max-w-lg bg-white rounded-lg shadow p-6">
+  <form method="post" action="{{ '/accounts/create' if not account else '/accounts/' ~ account.id ~ '/update' }}" class="space-y-4">
+    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+    <div>
+      <label class="block text-sm font-medium mb-1">Nombre</label>
+      <input name="nombre" value="{{ account.nombre if account else '' }}" required class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+    </div>
+    <div>
+      <label class="block text-sm font-medium mb-1">
+        Personal Access Token
+        {% if account %}<span class="text-slate-400">(déjalo vacío para no cambiar | actual: {{ account.pat_masked }})</span>{% endif %}
+      </label>
+      <input name="pat" type="password" class="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+             {% if not account %}required{% endif %}>
+    </div>
+    <div class="flex gap-2">
+      <button class="rounded bg-cyan-700 hover:bg-cyan-800 text-white px-4 py-2 text-sm font-semibold">Guardar</button>
+      <a href="/accounts" class="rounded bg-slate-200 hover:bg-slate-300 px-4 py-2 text-sm">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Usuarios Telegram — Supabase Backups{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <h1 class="text-2xl font-bold">Usuarios de Telegram</h1>
+  {% if is_admin %}
+  <a href="/users/new" class="rounded bg-cyan-700 hover:bg-cyan-800 text-white px-3 py-2 text-sm font-semibold">Nuevo usuario</a>
+  {% endif %}
+</div>
+<p class="text-sm text-slate-500 mb-4">El rol <b>admin</b> tiene permisos totales sobre todos los proyectos de forma implícita. El rol <b>usuario</b> depende de la configuración de permisos por proyecto.</p>
+
+<div class="bg-white rounded-lg shadow overflow-hidden">
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="text-left text-slate-500 border-b bg-slate-50">
+        <th class="px-4 py-2">Nombre</th>
+        <th class="px-4 py-2">chat_id</th>
+        <th class="px-4 py-2">Rol</th>
+        <th class="px-4 py-2">Activo</th>
+        <th class="px-4 py-2">Acceso a proyectos</th>
+        <th class="px-4 py-2"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in telegram_users %}
+      <tr class="border-t">
+        <td class="px-4 py-2 font-medium">{{ u.nombre }}</td>
+        <td class="px-4 py-2 font-mono text-slate-500">{{ u.telegram_chat_id }}</td>
+        <td class="px-4 py-2">{{ u.rol }}</td>
+        <td class="px-4 py-2">{{ 'Sí' if u.activo else 'No' }}</td>
+        <td class="px-4 py-2 text-slate-500">{{ 'Todos' if u.es_admin else (u.proyectos_puede or 'ninguno') }}</td>
+        <td class="px-4 py-2 text-right space-x-2">
+          <a href="/users/{{ u.id }}/edit" class="text-cyan-700 hover:underline">Editar / Permisos</a>
+          {% if is_admin %}
+          <form method="post" action="/users/{{ u.id }}/delete" class="inline" onsubmit="return confirm('¿Eliminar el usuario {{ u.nombre }}?')">
+            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <input type="hidden" name="confirm" value="si">
+            <button class="text-red-600 hover:underline">Eliminar</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="px-4 py-4 text-slate-500">No hay usuarios de Telegram.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

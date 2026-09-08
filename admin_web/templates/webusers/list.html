@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Usuarios Web — Supabase Backups{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <h1 class="text-2xl font-bold">Usuarios de la interfaz web</h1>
+  {% if is_admin %}
+  <a href="/web-users/new" class="rounded bg-cyan-700 hover:bg-cyan-800 text-white px-3 py-2 text-sm font-semibold">Nuevo usuario web</a>
+  {% endif %}
+</div>
+
+<div class="bg-white rounded-lg shadow overflow-hidden">
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="text-left text-slate-500 border-b bg-slate-50">
+        <th class="px-4 py-2">Usuario</th>
+        <th class="px-4 py-2">Rol</th>
+        <th class="px-4 py-2">Activo</th>
+        <th class="px-4 py-2">Creado</th>
+        <th class="px-4 py-2"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in web_users %}
+      <tr class="border-t">
+        <td class="px-4 py-2 font-medium">{{ u.username }}</td>
+        <td class="px-4 py-2">{{ u.rol }}</td>
+        <td class="px-4 py-2">{{ 'Sí' if u.activo else 'No' }}</td>
+        <td class="px-4 py-2 text-slate-500">{{ u.created_at }}</td>
+        <td class="px-4 py-2 text-right space-x-2">
+          <a href="/web-users/{{ u.id }}/edit" class="text-cyan-700 hover:underline">Editar</a>
+          {% if is_admin %}
+          <form method="post" action="/web-users/{{ u.id }}/delete" class="inline" onsubmit="return confirm('¿Eliminar al usuario {{ u.username }}?')">
+            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <input type="hidden" name="confirm" value="si">
+            <button class="text-red-600 hover:underline">Eliminar</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="px-4 py-4 text-slate-500">No hay usuarios web.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

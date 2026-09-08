@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Supabase Backups Admin{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen">
+
+  {% if current_user %}
+  <nav class="bg-slate-900 text-white shadow">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center gap-4">
+      <span class="font-bold text-sm">Supabase Backups</span>
+      <div class="flex flex-wrap gap-3 text-sm">
+        <a href="/" class="hover:text-cyan-300">Dashboard</a>
+        <a href="/projects" class="hover:text-cyan-300">Proyectos</a>
+        <a href="/accounts" class="hover:text-cyan-300">Cuentas</a>
+        <a href="/users" class="hover:text-cyan-300">Usuarios Telegram</a>
+        <a href="/web-users" class="hover:text-cyan-300">Usuarios Web</a>
+        <a href="/backups" class="hover:text-cyan-300">Backups</a>
+        <a href="/audit" class="hover:text-cyan-300">Auditoría</a>
+      </div>
+      <div class="ml-auto flex items-center gap-3 text-sm">
+        <span class="text-slate-300">
+          {{ current_user.username }}
+          <span class="ml-1 px-2 py-0.5 rounded {{ 'bg-cyan-700' if is_admin else 'bg-slate-600' }}">{{ current_user.rol }}</span>
+        </span>
+        <form method="post" action="/logout">
+          <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+          <button class="text-slate-300 hover:text-white">Salir</button>
+        </form>
+      </div>
+    </div>
+  </nav>
+  {% endif %}
+
+  <main class="max-w-6xl mx-auto px-4 py-6">
+    {% if ok_msg %}
+      <div class="mb-4 rounded border border-emerald-300 bg-emerald-50 text-emerald-800 px-4 py-2 text-sm">{{ ok_msg }}</div>
+    {% endif %}
+    {% if err_msg %}
+      <div class="mb-4 rounded border border-red-300 bg-red-50 text-red-800 px-4 py-2 text-sm">{{ err_msg }}</div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+
+</body>
+</html>
