@@ -62,7 +62,7 @@ def get_connection_string(pat: str, project_ref: str) -> str | None:
     headers = {"Authorization": f"Bearer {pat}", "Accept": "application/json"}
     try:
         resp = httpx.get(
-            f"{SUPABASE_API}/v1/projects/{project_ref}/database/connection-string",
+            f"{SUPABASE_API}/v1/projects/{project_ref}/config/database/pooler",
             headers=headers,
             timeout=15,
         )
@@ -70,8 +70,12 @@ def get_connection_string(pat: str, project_ref: str) -> str | None:
         logger.warning("Error al obtener connection string: %s", exc)
         return None
     if resp.status_code == 200:
-        data = resp.json()
-        return data.get("connection_string") or data.get("pooler_connection_string")
+        poolers = resp.json()
+        for pooler in poolers:
+            if pooler.get("database_type") == "PRIMARY":
+                return pooler.get("connection_string") or pooler.get("connectionString")
+        if poolers:
+            return poolers[0].get("connection_string") or poolers[0].get("connectionString")
     logger.warning(
         "No se pudo obtener connection string para %s: HTTP %s",
         project_ref, resp.status_code,
