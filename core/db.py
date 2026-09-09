@@ -31,6 +31,16 @@ def init_db() -> None:
     schema = Path(__file__).resolve().parent.parent / "db" / "schema.sql"
     with connect() as conn:
         conn.executescript(schema.read_text(encoding="utf-8"))
+    _migrate()
+
+
+def _migrate() -> None:
+    """Migraciones incrementales para bases de datos existentes."""
+    with connect() as conn:
+        try:
+            conn.execute("ALTER TABLE users ADD COLUMN supabase_pat_encrypted TEXT")
+        except sqlite3.OperationalError:
+            pass  # Columna ya existe
 
 
 def fetch_one(sql: str, params: Iterable[Any] = ()) -> sqlite3.Row | None:

@@ -7,7 +7,7 @@ todos los proyectos activos. El resto de los roles depende de la tabla
 
 from __future__ import annotations
 
-from core import db
+from core import db, crypto
 
 
 class UserError(Exception):
@@ -131,3 +131,47 @@ def can(user_id: int, project_id: int, permission: str) -> bool:
 def authorized_chat(telegram_chat_id: int) -> dict | None:
     """Devuelve el usuario si está registrado y activo."""
     return get_user(telegram_chat_id)
+
+
+def save_pat(telegram_chat_id: int, pat: str) -> None:
+    """Guarda el PAT de Supabase del usuario (cifrado)."""
+    db.execute(
+        "UPDATE users SET supabase_pat_encrypted = ? WHERE telegram_chat_id = ?",
+        (crypto.encrypt(pat.strip()), telegram_chat_id),
+    )
+
+
+def get_pat(telegram_chat_id: int) -> str | None:
+    """Devuelve el PAT descifrado del usuario, o None si no tiene."""
+    row = db.fetch_one(
+        "SELECT supabase_pat_encrypted FROM users WHERE telegram_chat_id = ?",
+        (telegram_chat_id,),
+    )
+    if row is None or row["supabase_pat_encrypted"] is None:
+        return None
+    return crypto.decrypt(row["supabase_pat_encrypted"])
+
+
+def has_pat(telegram_chat_id: int) -> bool:
+    """True si el usuario tiene un PAT registrado."""
+    row = db.fetch_one(
+        "SELECT supabase_pat_encrypted FROM users WHERE telegram_chat_id = ?",
+        (telegram_chat_id,),
+    )
+    return row is not None and row["supabase_pat_encrypted"] is not None
+
+
+def find_account_by_chat_id(telegram_chat_id: int) -> dict | None:
+    """Busca la cuenta de Supabase asociada al usuario del bot.
+
+    La cuenta se identifica por el nombre 'Telegram: <chat_id>'.
+    """
+    nombre = f"Telegram: {telegram_chat_id}"
+    row = db.fetch_one("SELECT * FROM accounts WHERE nombre = ?", (nombre,))
+    if row is None:
+        return None
+    return {
+        "id": row["id"],
+        "nombre": row["nombre"],
+        "activo": bool(row["activo"]),
+    }

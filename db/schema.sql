@@ -40,12 +40,13 @@ CREATE TABLE projects (
 -- Usuarios del bot de Telegram.
 -- ------------------------------------------------------------------
 CREATE TABLE users (
-    id                INTEGER PRIMARY KEY AUTOINCREMENT,
-    telegram_chat_id  INTEGER NOT NULL UNIQUE,
-    nombre            TEXT NOT NULL,
-    rol               TEXT NOT NULL DEFAULT 'usuario',  -- admin | usuario
-    created_at        TEXT NOT NULL DEFAULT (datetime('now')),
-    activo            INTEGER NOT NULL DEFAULT 1
+    id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+    telegram_chat_id        INTEGER NOT NULL UNIQUE,
+    nombre                  TEXT NOT NULL,
+    rol                     TEXT NOT NULL DEFAULT 'usuario',  -- admin | usuario
+    supabase_pat_encrypted  TEXT,                             -- PAT de Supabase, cifrado (Fernet)
+    created_at              TEXT NOT NULL DEFAULT (datetime('now')),
+    activo                  INTEGER NOT NULL DEFAULT 1
 );
 
 -- ------------------------------------------------------------------
