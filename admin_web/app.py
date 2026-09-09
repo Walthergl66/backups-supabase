@@ -12,7 +12,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from admin_web import deps
-from admin_web.routes import accounts, audit, auth, projects, users, web_users
+from admin_web.routes import accounts, audit, auth, import_projects, projects, users, web_users
 from admin_web.views import render
 from services import audit as audit_srv
 from services import web_users as web_users_srv
@@ -29,6 +29,7 @@ def create_app() -> FastAPI:
     app.include_router(auth.router)
     app.include_router(accounts.router)
     app.include_router(projects.router)
+    app.include_router(import_projects.router)
     app.include_router(users.router)
     app.include_router(web_users.router)
     app.include_router(audit.router)

@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Importar Proyectos — Supabase Backups{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-4">Importar Proyectos desde Supabase</h1>
+
+<div class="max-w-2xl bg-white rounded-lg shadow p-6">
+  {% if error %}
+  <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">{{ error }}</div>
+  {% endif %}
+  {% if info %}
+  <div class="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded mb-4">{{ info }}</div>
+  {% endif %}
+
+  <form method="post" action="/import-projects/fetch" class="space-y-4">
+    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+    <div>
+      <label class="block text-sm font-medium mb-1">Personal Access Token (PAT) de Supabase</label>
+      <input name="pat" type="password" value="{{ pat }}" required
+             class="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+             placeholder="sbp_...">
+      <p class="text-xs text-slate-400 mt-1">Lo encuentras en: Dashboard → Account → Access Tokens</p>
+    </div>
+    <button class="rounded bg-cyan-700 hover:bg-cyan-800 text-white px-4 py-2 text-sm font-semibold">
+      Buscar proyectos
+    </button>
+  </form>
+
+  {% if projects %}
+  <hr class="my-6">
+  <form method="post" action="/import-projects/create" class="space-y-4">
+    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+    <input type="hidden" name="pat" value="{{ pat }}">
+
+    <div>
+      <label class="block text-sm font-medium mb-1">Nombre de la cuenta</label>
+      <input name="account_name" class="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+             placeholder="Mi cuenta de Supabase" required>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium mb-2">
+        Proyectos encontrados ({{ projects|length }})
+        {% if existing_count %}<span class="text-slate-400">— {{ existing_count }} ya registrados</span>{% endif %}
+      </label>
+      <div class="border rounded max-h-80 overflow-y-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-slate-500 border-b bg-slate-50">
+              <th class="px-4 py-2 w-10"><input type="checkbox" id="select-all" checked></th>
+              <th class="px-4 py-2">Nombre</th>
+              <th class="px-4 py-2">Ref</th>
+              <th class="px-4 py-2">Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in projects %}
+            <tr class="border-t hover:bg-slate-50">
+              <td class="px-4 py-2">
+                <input type="checkbox" name="selected_projects" value="{{ p.ref }}" checked class="project-cb rounded">
+              </td>
+              <td class="px-4 py-2 font-medium">{{ p.name }}</td>
+              <td class="px-4 py-2 font-mono text-xs text-slate-500">{{ p.ref[:12] }}…</td>
+              <td class="px-4 py-2">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+                  {% if p.status == 'active_healthy' %}bg-green-100 text-green-800
+                  {% elif p.status == 'inactive' %}bg-slate-100 text-slate-600
+                  {% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                  {{ p.status }}
+                </span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="flex gap-2">
+      <button class="rounded bg-cyan-700 hover:bg-cyan-800 text-white px-4 py-2 text-sm font-semibold">
+        Importar seleccionados
+      </button>
+      <a href="/accounts" class="rounded bg-slate-200 hover:bg-slate-300 px-4 py-2 text-sm">Cancelar</a>
+    </div>
+  </form>
+  {% endif %}
+</div>
+
+{% if projects %}
+<script>
+  document.getElementById('select-all').addEventListener('change', function() {
+    document.querySelectorAll('.project-cb').forEach(cb => cb.checked = this.checked);
+  });
+</script>
+{% endif %}
+{% endblock %}
