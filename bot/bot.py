@@ -198,8 +198,7 @@ async def _cmd_backup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             f"Backup completado\n"
             f"• Proyecto: {project['slug']}\n"
             f"• Tamaño: {_fmt_size(result.tamaño_archivo)}\n"
-            f"• Duración: {result.duracion_seg:.1f}s\n"
-            f"• Ubicación: {result.ruta_archivo}"
+            f"• Duración: {result.duracion_seg:.1f}s"
         )
         if result.archivos_eliminados:
             detail += f"\n• Rotación: se eliminaron {len(result.archivos_eliminados)} backup(s) antiguo(s)"
@@ -211,13 +210,17 @@ async def _cmd_backup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         )
         audit_srv.log_action("bot_backup", "ok", user_id=user["id"], project_id=project["id"],
                              detalle=result.detalle)
+        await notify_mod.send_message(context.bot, chat_id, detail)
+        await notify_mod.send_document(
+            context.bot, chat_id, result.ruta_archivo,
+            caption=f"Backup de {project['slug']}"
+        )
     else:
         detail = f"Backup fallido\n• Proyecto: {project['slug']}\n• Motivo: {result.detalle}"
         history_srv.record(project["id"], "error", detalle=result.detalle)
         audit_srv.log_action("bot_backup", "error", user_id=user["id"], project_id=project["id"],
                              detalle=result.detalle)
-    for msg in _split(detail):
-        await notify_mod.send_message(context.bot, chat_id, msg)
+        await notify_mod.send_message(context.bot, chat_id, detail)
 
 
 async def _cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

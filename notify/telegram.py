@@ -22,3 +22,19 @@ async def send_message(bot: Bot, chat_id: int, text: str) -> bool:
     except Exception as exc:  # noqa: BLE001 - notificar sin tumbar el flujo
         logger.error("No se pudo notificar al chat %s: %s", chat_id, exc)
         return False
+
+
+async def send_document(bot: Bot, chat_id: int, file_path: str, caption: str = "") -> bool:
+    """Envía un archivo. Devuelve True si se entregó."""
+    try:
+        from pathlib import Path
+        with open(file_path, "rb") as f:
+            await bot.send_document(
+                chat_id=chat_id,
+                document=f,
+                caption=caption,
+            )
+        return True
+    except Exception as exc:  # noqa: BLE001 - notificar sin tumbar el flujo
+        logger.error("No se pudo enviar archivo a chat %s: %s", chat_id, exc)
+        return False
