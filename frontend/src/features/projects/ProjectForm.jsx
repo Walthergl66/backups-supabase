@@ -69,7 +69,7 @@ export default function ProjectForm() {
 
   return (
     <>
-      <PageHead title={editing ? 'Editar proyecto' : 'Nuevo proyecto'} sub="Configura un proyecto de Supabase para su respaldo automático." />
+      <PageHead title={editing ? 'Editar proyecto' : 'Nuevo proyecto'} sub="Conecta un proyecto de Supabase y programa su respaldo automático." />
 
       {error && <Flash type="err">{error}</Flash>}
 
@@ -78,16 +78,16 @@ export default function ProjectForm() {
           <form onSubmit={submit}>
             <div className="form-grid">
               <div className="field">
-                <label className="label">Slug</label>
+                <label className="label">Nombre corto (slug)</label>
                 <input className="input" value={form.slug} onChange={set('slug')} placeholder="mi-proyecto" required disabled={editing} />
-                <div className="hint">minúsculas, números, guiones. No editable tras crear.</div>
+                <div className="hint">Minúsculas, números y guiones. No se puede cambiar después.</div>
               </div>
               <div className="field">
-                <label className="label">Nombre</label>
+                <label className="label">Nombre visible</label>
                 <input className="input" value={form.nombre} onChange={set('nombre')} required />
               </div>
               <div className="field">
-                <label className="label">Cuenta</label>
+                <label className="label">Cuenta de Supabase</label>
                 <select className="select" value={form.account_id} onChange={set('account_id')} required>
                   <option value="" disabled>Selecciona una cuenta…</option>
                   {accounts.map((a) => (
