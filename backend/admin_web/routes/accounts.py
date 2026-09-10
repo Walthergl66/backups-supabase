@@ -1,88 +1,63 @@
-"""CRUD de cuentas de Supabase desde la interfaz web."""
+"""API de cuentas de Supabase."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Form, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 
-from admin_web import deps
-from admin_web.views import render
+from admin_web.deps import get_current_user, require_admin
 from services import accounts as accounts_srv
 from services import audit as audit_srv
 
-router = APIRouter(tags=["accounts"])
+router = APIRouter(prefix="/api/accounts", tags=["accounts"])
 
 
-@router.get("/accounts")
-async def list_accounts(request: Request):
-    deps.require_user(request)
-    ctx = {"accounts": accounts_srv.list_accounts()}
-    return render(request, "accounts/list.html", ctx)
+@router.get("")
+async def list_accounts(user: dict = Depends(get_current_user)):
+    return accounts_srv.list_accounts()
 
 
-@router.get("/accounts/new")
-async def new_account(request: Request):
-    deps.require_user(request)
-    return render(request, "accounts/form.html", {"account": None})
+@router.post("")
+async def create_account(request: Request, admin: dict = Depends(require_admin)):
+    data = await request.json()
+    try:
+        account_id = accounts_srv.create_account(data.get("nombre", ""), data.get("pat", ""))
+    except accounts_srv.AccountError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    audit_srv.log_action("web_cuenta_crear", "ok", web_user_id=admin["id"],
+                         detalle=f"cuenta '{(data.get('nombre') or '').strip()}'")
+    return {"id": account_id}
 
 
-@router.get("/accounts/{account_id}/edit")
-async def edit_account(request: Request, account_id: int):
-    deps.require_user(request)
+@router.get("/{account_id}")
+async def get_account(account_id: int, user: dict = Depends(get_current_user)):
     account = accounts_srv.get_account(account_id)
     if account is None:
-        return deps.redirect("/accounts", err="Cuenta no encontrada.")
-    return render(request, "accounts/form.html", {"account": account})
+        raise HTTPException(status_code=404, detail="Cuenta no encontrada.")
+    return account
 
 
-@router.post("/accounts/create")
-async def create_account(
-    request: Request,
-    nombre: str = Form(""),
-    pat: str = Form(""),
-):
-    admin = deps.require_admin(request)
-    await deps.check_csrf(request)
+@router.put("/{account_id}")
+async def update_account(account_id: int, request: Request, admin: dict = Depends(require_admin)):
+    data = await request.json()
     try:
-        account_id = accounts_srv.create_account(nombre, pat)
-        audit_srv.log_action("web_cuenta_crear", "ok", web_user_id=admin["id"],
-                             detalle=f"cuenta '{nombre.strip()}'")
+        accounts_srv.update_account(
+            account_id,
+            nombre=data.get("nombre") or None,
+            pat=data.get("pat") or None,
+        )
     except accounts_srv.AccountError as exc:
-        return deps.redirect("/accounts", err=str(exc))
-    return deps.redirect("/accounts", ok=f"Cuenta creada (id {account_id}).")
+        raise HTTPException(status_code=400, detail=str(exc))
+    audit_srv.log_action("web_cuenta_editar", "ok", web_user_id=admin["id"],
+                         detalle=f"cuenta id {account_id}")
+    return {"ok": True}
 
 
-@router.post("/accounts/{account_id}/update")
-async def update_account(
-    request: Request,
-    account_id: int,
-    nombre: str = Form(""),
-    pat: str = Form(""),
-):
-    admin = deps.require_admin(request)
-    await deps.check_csrf(request)
-    try:
-        accounts_srv.update_account(account_id, nombre=nombre, pat=pat)
-        audit_srv.log_action("web_cuenta_editar", "ok", web_user_id=admin["id"],
-                             detalle=f"cuenta id {account_id}")
-    except accounts_srv.AccountError as exc:
-        return deps.redirect("/accounts", err=str(exc))
-    return deps.redirect("/accounts", ok="Cuenta actualizada.")
-
-
-@router.post("/accounts/{account_id}/delete")
-async def delete_account(
-    request: Request,
-    account_id: int,
-    confirm: str = Form(""),
-):
-    admin = deps.require_admin(request)
-    await deps.check_csrf(request)
-    if confirm.lower() != "si":
-        return deps.redirect("/accounts", err="Confirma la eliminación escribiendo 'si'.")
+@router.delete("/{account_id}")
+async def delete_account(account_id: int, admin: dict = Depends(require_admin)):
     try:
         accounts_srv.delete_account(account_id)
-        audit_srv.log_action("web_cuenta_eliminar", "ok", web_user_id=admin["id"],
-                             detalle=f"cuenta id {account_id}")
     except accounts_srv.AccountError as exc:
-        return deps.redirect("/accounts", err=str(exc))
-    return deps.redirect("/accounts", ok="Cuenta eliminada.")
+        raise HTTPException(status_code=400, detail=str(exc))
+    audit_srv.log_action("web_cuenta_eliminar", "ok", web_user_id=admin["id"],
+                         detalle=f"cuenta id {account_id}")
+    return {"ok": True}
