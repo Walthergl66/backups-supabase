@@ -84,7 +84,7 @@ export default function UserForm() {
 
   return (
     <>
-      <PageHead title={editing ? 'Editar usuario de Telegram' : 'Nuevo usuario de Telegram'} sub="Los admins pueden respaldar y monitorear todos los proyectos." />
+      <PageHead title={editing ? 'Editar usuario de Telegram' : 'Nuevo usuario de Telegram'} sub="Los administradores pueden respaldar y monitorear todos los proyectos." />
 
       {error && <Flash type="err">{error}</Flash>}
 
@@ -93,17 +93,17 @@ export default function UserForm() {
           <form onSubmit={submit}>
             <div className="form-grid">
               <div className="field">
-                <label className="label">Chat ID de Telegram</label>
+                <label className="label">ID de chat en Telegram</label>
                 <input className="input mono" value={form.telegram_chat_id} onChange={set('telegram_chat_id')}
                   required={!editing} disabled={editing} placeholder="123456789" />
-                <div className="hint">Es el ID numérico del chat del usuario con el bot.</div>
+                <div className="hint">Es el número que identifica el chat del usuario con el bot.</div>
               </div>
               <div className="field">
-                <label className="label">Nombre</label>
+                <label className="label">Nombre para mostrar</label>
                 <input className="input" value={form.nombre} onChange={set('nombre')} required />
               </div>
               <div className="field">
-                <label className="label">Rol</label>
+                <label className="label">Rol de acceso</label>
                 <select className="select" value={form.rol} onChange={set('rol')}>
                   <option value="usuario">usuario</option>
                   <option value="admin">admin</option>
@@ -114,8 +114,6 @@ export default function UserForm() {
                   <input type="checkbox" checked={form.activo} onChange={setChk('activo')} />
                   Activo
                 </label>
-              </div>
-            </div>
 
             {form.rol === 'usuario' && (
               <div className="field">
