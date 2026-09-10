@@ -1,17 +1,30 @@
 services:
-  supabase-backups:
-    build: .
-    image: supabase-backups:latest
-    container_name: supabase-backups
+  backend:
+    build: ./backend
+    image: supabase-backups-api:latest
+    container_name: supabase-backups-api
     restart: unless-stopped
-    env_file: .env
-    ports:
-      - "8080:8080"
+    env_file: ./backend/.env
+    expose:
+      - "8080"
     volumes:
-      - ./data:/data       # SQLite + backups persistidos fuera del contenedor
+      - ./data:/data                # SQLite + backups persistidos fuera del contenedor
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/login', timeout=5)"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/api/health', timeout=5)"]
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 15s
+      start_period: 20s
+
+  frontend:
+    build: ./frontend
+    image: supabase-backups-frontend:latest
+    container_name: supabase-backups-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "8080:80"                   # SPA + proxy /api -> backend
+    environment:
+      - VITE_API_BASE=/api
