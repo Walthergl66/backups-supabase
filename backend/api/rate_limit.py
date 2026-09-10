@@ -9,8 +9,6 @@ from __future__ import annotations
 
 from slowapi import Limiter
 
-_LOGIN_LIMITS = ["5/minute", "60/hour"]
-
 
 def _client_address(request) -> str:
     forwarded = request.headers.get("X-Forwarded-For", "")
