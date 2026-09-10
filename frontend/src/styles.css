@@ -105,7 +105,13 @@ button { font-family: inherit; }
   box-shadow: 0 8px 24px rgba(56, 189, 248, 0.35);
 }
 .brand-logo svg { width: 24px; height: 24px; }
-.brand-name { font-size: 17px; font-weight: 800; letter-spacing: -0.02em; }
+.brand-name {
+  font-size: 17px; font-weight: 800; letter-spacing: -0.02em;
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
 .brand-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
 
 .nav { padding: 20px 16px; display: flex; flex-direction: column; gap: 3px; }
@@ -141,6 +147,8 @@ button { font-family: inherit; }
   font-size: 12px; color: var(--muted);
   background: linear-gradient(90deg, rgba(56, 189, 248, 0.06), rgba(167, 139, 250, 0.06));
 }
+.status-dot { display: inline-block; width: 8px; height: 8px; vertical-align: middle; margin-right: 6px; }
+.sidebar-ver { display: block; margin-top: 8px; font-size: 11px; color: var(--muted); letter-spacing: 0.02em; }
 
 .main-wrap { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 
@@ -152,7 +160,18 @@ button { font-family: inherit; }
   backdrop-filter: blur(10px);
   position: sticky; top: 0; z-index: 20;
 }
-.topbar-title { display: flex; align-items: center; gap: 12px; font-size: 15px; font-weight: 600; }
+.topbar-title { display: flex; align-items: center; gap: 12px; font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+
+.topbar-dot, .status-dot {
+  width: 10px; height: 10px; border-radius: 999px; flex-shrink: 0;
+  background: var(--success);
+  box-shadow: 0 0 14px var(--success);
+  animation: pulse 2.2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
 
 .burger { display: none; background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 12px; padding: 8px 10px; cursor: pointer; }
 
