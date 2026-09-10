@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
-from admin_web.deps import get_current_user
+from api.deps import get_current_user
 from core.jwt import create_token
 from services import audit as audit_srv
 from services import web_users as web_users_srv

@@ -9,8 +9,8 @@ from __future__ import annotations
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from admin_web import deps
-from admin_web.routes import accounts, audit, auth, backups, import_projects, projects, users, web_users
+from api import deps
+from api.routes import accounts, audit, auth, backups, import_projects, projects, users, web_users
 from services import audit as audit_srv
 from services import projects as projects_srv
 from services import web_users as web_users_srv

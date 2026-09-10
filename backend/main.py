@@ -17,7 +17,7 @@ from logging.handlers import RotatingFileHandler
 
 import uvicorn
 
-from admin_web.app import create_app
+from api.app import create_app
 from bot import build_application, run_bot_forever
 from core import db as db_core
 from core.config import settings

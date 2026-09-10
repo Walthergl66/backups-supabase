@@ -33,7 +33,7 @@ y la misma base SQLite.
 │   │   ├── application.py      # wiring de handlers y polling
 │   │   └── handlers/           # basics, backup_cmd, status_cmd, register, addbd, misc
 │   ├── notify/                 # canal de notificación (Telegram)
-│   ├── admin_web/              # FastAPI: auth JWT + rutas REST en /api
+│   ├── api/                    # FastAPI: auth JWT + rutas REST en /api
 │   ├── .env                    # credenciales (ver backend/.env.example)
 │   └── Dockerfile              # python:3.12-slim + postgresql-client
 ├── frontend/

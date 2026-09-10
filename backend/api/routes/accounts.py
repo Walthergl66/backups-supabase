@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from admin_web.deps import get_current_user, require_admin
+from api.deps import get_current_user, require_admin
 from services import accounts as accounts_srv
 from services import audit as audit_srv
 

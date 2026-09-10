@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
 
-from admin_web.deps import get_current_user
+from api.deps import get_current_user
 from services import audit as audit_srv
 
 router = APIRouter(prefix="/api/audit", tags=["audit"])
