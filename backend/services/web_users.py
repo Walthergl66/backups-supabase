@@ -98,7 +98,7 @@ def record_failed_login(username: str) -> tuple[int, bool]:
     if attempts >= MAX_FAILED_ATTEMPTS:
         db.execute(
             "UPDATE web_users SET locked_until = ?, failed_attempts = 0 WHERE username = ?",
-            (datetime.now().isoformat(), username),
+            ((datetime.now() + timedelta(minutes=LOCKOUT_MINUTES)).isoformat(), username),
         )
         return attempts, True
     return attempts, False
