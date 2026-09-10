@@ -99,13 +99,13 @@ export default function ImportProjects() {
         <div className="card-body">
           <div className="form-grid">
             <div className="field">
-              <label className="label">Personal Access Token (PAT)</label>
+              <label className="label">Token de acceso (PAT)</label>
               <input className="input mono" type="password" value={pat} onChange={(e) => setPat(e.target.value)} required
                 placeholder="sbp_…" autoComplete="off" />
-              <div className="hint">Se usa solo para listar proyectos y obtener su connection string. No se guarda.</div>
+              <div className="hint">Se usa solo para listar tus proyectos y obtener su conexión. No se guarda.</div>
             </div>
             <div className="field">
-              <label className="label">Nombre de la cuenta (opcional)</label>
+              <label className="label">Nombre para la cuenta (opcional)</label>
               <input className="input" value={accountName} onChange={(e) => setAccountName(e.target.value)}
                 placeholder="Importada desde bot" />
             </div>
@@ -135,11 +135,11 @@ export default function ImportProjects() {
           <div className="card-body">
             <div className="form-grid">
               <div className="field">
-                <label className="label">Nombre</label>
+                <label className="label">Nombre para mostrar</label>
                 <input className="input" value={tgNombre} onChange={(e) => setTgNombre(e.target.value)} required placeholder="Nombre o @alias" />
               </div>
               <div className="field">
-                <label className="label">Chat ID</label>
+                <label className="label">Chat ID de Telegram</label>
                 <input className="input mono" value={tgChat} onChange={(e) => setTgChat(e.target.value)} required placeholder="123456789" />
                 <div className="hint">ID numérico del chat con el bot.</div>
               </div>
