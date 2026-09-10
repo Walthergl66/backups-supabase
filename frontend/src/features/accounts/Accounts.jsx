@@ -27,7 +27,7 @@ export default function Accounts() {
 
   return (
     <>
-      <PageHead title="Cuentas" sub="Cuentas de Supabase con su Personal Access Token cifrado.">
+      <PageHead title="Cuentas" sub="Cuentas de Supabase que alimentan el panel.">
         <Link className="btn btn-primary" to="/cuentas/nueva">Nueva cuenta</Link>
       </PageHead>
 

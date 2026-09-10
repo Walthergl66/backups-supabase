@@ -56,11 +56,11 @@ export default function AccountForm() {
               <input className="input" value={form.nombre} onChange={set('nombre')} required />
             </div>
             <div className="field">
-              <label className="label">Personal Access Token (PAT)</label>
+              <label className="label">Token de acceso (PAT)</label>
               <input className="input mono" type="password" autoComplete="off"
                 value={form.pat} onChange={set('pat')} required={!editing}
                 placeholder={editing ? 'Dejar vacío para conservar el actual' : 'sbp_…'} />
-              <div className="hint">Token de Supabase para listar proyectos.</div>
+              <div className="hint">Token personal de Supabase (empieza con sbp_…) para listar tus proyectos. Se guarda cifrado.</div>
             </div>
             <div className="inline-actions">
               <button className="btn btn-primary" disabled={sending}>{sending ? 'Guardando…' : 'Guardar'}</button>

@@ -33,7 +33,7 @@ export default function Login() {
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M12 3v9l3 3"/><path d="M5 15a7 7 0 1 1 2.1 5"/></svg>
         </div>
         <h1 style={{ margin: '0 0 4px', fontSize: 20 }}>Supabase Backups</h1>
-        <p className="muted" style={{ marginTop: 0, fontSize: 13 }}>Ingresa con tu usuario de la interfaz web.</p>
+        <p className="muted" style={{ marginTop: 0, fontSize: 13 }}>Bienvenido de nuevo. Ingresa con tu usuario del panel.</p>
 
         {error && <Flash type="err">{error}</Flash>}
 

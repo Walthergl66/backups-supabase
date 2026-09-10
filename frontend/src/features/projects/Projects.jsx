@@ -46,7 +46,7 @@ export default function Projects() {
 
   return (
     <>
-      <PageHead title="Proyectos" sub="Proyectos de Supabase configurados para respaldo.">
+      <PageHead title="Proyectos" sub="Los proyectos conectados con su respaldo automático.">
         <div className="inline-actions">
           <Link className="btn btn-ghost" to={`/proyectos?estado=${estado === 'eliminados' ? 'activos' : 'eliminados'}`}>
             {estado === 'eliminados' ? 'Ver activos' : 'Ver eliminados'}

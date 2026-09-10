@@ -16,7 +16,7 @@ export default function Audit() {
 
   return (
     <>
-      <PageHead title="Auditoría" sub="Registro de acciones del bot y de la interfaz web." />
+      <PageHead title="Auditoría" sub="Historial de la actividad del panel y del bot." />
 
       {error && <Flash type="err">{error}</Flash>}
 

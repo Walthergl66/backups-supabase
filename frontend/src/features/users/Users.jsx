@@ -26,7 +26,7 @@ export default function Users() {
 
   return (
     <>
-      <PageHead title="Usuarios de Telegram" sub="Usuarios autorizados para usar el bot de respaldo.">
+      <PageHead title="Usuarios de Telegram" sub="Personas que pueden operar el bot desde Telegram.">
         <Link className="btn btn-primary" to="/usuarios/nuevo">Nuevo usuario</Link>
       </PageHead>
 

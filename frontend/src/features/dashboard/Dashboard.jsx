@@ -28,7 +28,7 @@ export default function Dashboard() {
 
   return (
     <>
-      <PageHead title="Dashboard" sub="Resumen del sistema de respaldo de Supabase." />
+      <PageHead title="Dashboard" sub="Todo tu sistema de respaldos en un vistazo." />
 
       <div className="grid grid-stat">
         {tiles.map(([key, label, icon, color]) => (

@@ -27,7 +27,7 @@ export default function WebUsers() {
 
   return (
     <>
-      <PageHead title="Usuarios Web" sub="Quienes acceden a este panel. Roles: admin o viewer.">
+      <PageHead title="Usuarios Web" sub="Personas con acceso al panel: administran todo o solo consultan.">
         <Link className="btn btn-primary" to="/usuarios-web/nuevo">Nuevo usuario web</Link>
       </PageHead>
 
