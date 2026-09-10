@@ -15,9 +15,24 @@ from services import audit as audit_srv
 from services import projects as projects_srv
 from services import web_users as web_users_srv
 
+# Las docs se sirven bajo /api/* para que el proxy de nginx (location /api/)
+# las reenvíe al backend en vez de a la SPA.
+DOCS_URL = "/api/docs"
+REDOC_URL = "/api/redoc"
+OPENAPI_URL = "/api/openapi.json"
+
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Supabase Backups API", docs_url=None, redoc_url=None, openapi_url=None)
+    app = FastAPI(
+        title="Supabase Backups API",
+        description="API REST del panel de backups de Supabase.\n\n"
+                    "Autentícate con el botón **Authorize**: pega SOLO el token JWT "
+                    "(login en `POST /api/auth/login`); la API lo envía como `Bearer`.",
+        version="1.0.0",
+        docs_url=DOCS_URL,
+        redoc_url=REDOC_URL,
+        openapi_url=OPENAPI_URL,
+    )
 
     app.add_middleware(
         CORSMiddleware,
@@ -25,6 +40,10 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Esquema de seguridad Bearer para el botón "Authorize" de Swagger.
+    # Solo afecta a la documentación: la autenticación real la leen las deps.
+    _setup_bearer_auth(app)
 
     app.include_router(auth.router)
     app.include_router(accounts.router)
@@ -56,6 +75,29 @@ def create_app() -> FastAPI:
         return {"status": "ok"}
 
     return app
+
+
+def _setup_bearer_auth(app: FastAPI) -> None:
+    """Añade el esquema HTTP Bearer al OpenAPI para el botón Authorize.
+
+    No cambia la autorización en runtime (la manejan las dependencias de
+    `api/deps.py` leyendo el header `Authorization`), solo enriquece la
+    documentación de Swagger/ReDoc.
+    """
+    def _openapi() -> dict:
+        if app.openapi_schema:
+            return app.openapi_schema
+        schema = app.openapi()
+        schema.setdefault("components", {}).setdefault("securitySchemes", {})["bearerAuth"] = {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+        }
+        schema["security"] = [{"bearerAuth": []}]
+        app.openapi_schema = schema
+        return schema
+
+    app.openapi = _openapi  # type: ignore[method-assign]
 
 
 def _count(table: str, where: str | None = None) -> int:
