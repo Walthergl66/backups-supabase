@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../../features/auth/AuthContext.jsx'
 
 const icons = {
@@ -37,9 +37,21 @@ const groups = [
   },
 ]
 
+const sectionLabels = [
+  ['/proyectos', 'Proyectos'],
+  ['/cuentas', 'Cuentas'],
+  ['/backups', 'Backups'],
+  ['/importar', 'Importar desde Supabase'],
+  ['/usuarios-web', 'Usuarios del panel'],
+  ['/usuarios', 'Usuarios de Telegram'],
+  ['/auditoria', 'Bitácora'],
+]
+
 export default function Layout() {
   const { user, logout } = useAuth()
   const [open, setOpen] = useState(false)
+  const { pathname } = useLocation()
+  const section = pathname === '/' ? 'Dashboard' : sectionLabels.find(([p]) => pathname.startsWith(p))?.[1] || ''
 
   const close = () => setOpen(false)
 
@@ -76,7 +88,11 @@ export default function Layout() {
           ))}
         </nav>
 
-        <div className="sidebar-foot">Supabase Backups · v1.0</div>
+        <div className="sidebar-foot">
+          <span className="status-dot" />
+          Operativo
+          <span className="sidebar-ver">Supabase Backups · v1.0</span>
+        </div>
       </aside>
 
       <div
@@ -89,6 +105,12 @@ export default function Layout() {
           <button className="burger" onClick={() => setOpen(!open)} aria-label="Menú">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
           </button>
+          {section && (
+            <div className="topbar-title">
+              <span className="topbar-dot" />
+              {section}
+            </div>
+          )}
           <div className="user">
             {user && <span className="user-name muted" style={{ fontSize: 13 }}>{user.username}</span>}
             {user && <span className={`chip ${user.rol === 'admin' ? 'chip-admin' : 'chip-viewer'}`}>{user.rol === 'admin' ? 'Administrador' : 'Solo lectura'}</span>}
