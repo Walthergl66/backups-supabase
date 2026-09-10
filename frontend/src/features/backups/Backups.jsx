@@ -1,26 +1,25 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api, fmtBytes } from '../api.js'
+import { listBackups } from '../../services/backups.js'
+import { fmtBytes } from '../../utils/format.js'
+import PageHead from '../../components/ui/PageHead.jsx'
+import Flash from '../../components/ui/Flash.jsx'
+import Badge from '../../components/ui/Badge.jsx'
 
 export default function Backups() {
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    api.get('/api/backups').then(setData).catch((e) => setError(e.message))
+    listBackups().then(setData).catch((e) => setError(e.message))
   }, [])
 
-  if (error) return <div className="flash flash-err">{error}</div>
+  if (error) return <Flash type="err">{error}</Flash>
   if (!data) return <div className="muted">Cargando…</div>
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1 className="h1">Backups</h1>
-          <p className="sub">{data.total} registros · se muestran los últimos {data.rows.length}.</p>
-        </div>
-      </div>
+      <PageHead title="Backups" sub={`${data.total} registros · se muestran los últimos ${data.rows.length}.`} />
 
       <div className="card">
         <div className="table-scroll">
@@ -37,9 +36,9 @@ export default function Backups() {
                   </td>
                   <td>
                     {r.resultado === 'ok' ? (
-                      <span className="badge badge-ok">OK</span>
+                      <Badge tone="ok">OK</Badge>
                     ) : (
-                      <span className="badge badge-err">Error</span>
+                      <Badge tone="err">Error</Badge>
                     )}
                   </td>
                   <td className="mono">{fmtBytes(r.tamaño_archivo)}</td>

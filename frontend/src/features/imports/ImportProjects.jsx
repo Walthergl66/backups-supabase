@@ -1,5 +1,8 @@
 import { useState } from 'react'
-import { api, ApiError } from '../api.js'
+import { createImportedProjects, fetchAvailableProjects } from '../../services/imports.js'
+import { ApiError } from '../../services/http.js'
+import PageHead from '../../components/ui/PageHead.jsx'
+import Flash from '../../components/ui/Flash.jsx'
 
 export default function ImportProjects() {
   const [pat, setPat] = useState('')
@@ -25,7 +28,7 @@ export default function ImportProjects() {
     setResult(null)
     setSelected({})
     try {
-      const d = await api.post('/api/import/fetch', { pat })
+      const d = await fetchAvailableProjects(pat)
       setAvailable(d.available || [])
       if (!d.available.length && d.existing_count) {
         setError(`Los proyectos ya están importados (${d.existing_count}).`)
@@ -47,7 +50,7 @@ export default function ImportProjects() {
     setCreating(true)
     const selectedProjects = Object.entries(selected).filter(([, v]) => v).map(([ref]) => ref)
     try {
-      const d = await api.post('/api/import/create', {
+      const d = await createImportedProjects({
         pat,
         account_name: accountName,
         selected_projects: selectedProjects,
@@ -67,14 +70,9 @@ export default function ImportProjects() {
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1 className="h1">Importar proyectos</h1>
-          <p className="sub">Trae proyectos de Supabase y en el mismo paso registra al usuario de Telegram que los operará.</p>
-        </div>
-      </div>
+      <PageHead title="Importar proyectos" sub="Trae proyectos de Supabase y en el mismo paso registra al usuario de Telegram que los operará." />
 
-      {error && <div className="flash flash-err">{error}</div>}
+      {error && <Flash type="err">{error}</Flash>}
 
       {result && (
         <div className="flash flash-ok">

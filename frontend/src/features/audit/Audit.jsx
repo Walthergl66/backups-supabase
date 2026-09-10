@@ -1,27 +1,24 @@
 import { useEffect, useState } from 'react'
-import { api } from '../api.js'
+import { listAudit } from '../../services/audit.js'
+import PageHead from '../../components/ui/PageHead.jsx'
+import Flash from '../../components/ui/Flash.jsx'
+import Badge from '../../components/ui/Badge.jsx'
 
 export default function Audit() {
   const [rows, setRows] = useState([])
   const [error, setError] = useState('')
 
   useEffect(() => {
-    api
-      .get('/api/audit?limit=200')
+    listAudit()
       .then((d) => setRows(d.rows || []))
       .catch((e) => setError(e.message))
   }, [])
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1 className="h1">Auditoría</h1>
-          <p className="sub">Registro de acciones del bot y de la interfaz web.</p>
-        </div>
-      </div>
+      <PageHead title="Auditoría" sub="Registro de acciones del bot y de la interfaz web." />
 
-      {error && <div className="flash flash-err">{error}</div>}
+      {error && <Flash type="err">{error}</Flash>}
 
       <div className="card">
         <div className="table-scroll">
@@ -37,9 +34,9 @@ export default function Audit() {
                   <td className="mono">{a.accion}</td>
                   <td>
                     {a.resultado === 'ok' ? (
-                      <span className="badge badge-ok">ok</span>
+                      <Badge tone="ok">ok</Badge>
                     ) : (
-                      <span className="badge badge-err">{a.resultado}</span>
+                      <Badge tone="err">{a.resultado}</Badge>
                     )}
                   </td>
                   <td className="muted" style={{ wordBreak: 'break-all', maxWidth: 420 }}>{a.detalle || '-'}</td>
