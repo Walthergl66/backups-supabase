@@ -64,6 +64,54 @@ def authenticate(username: str, password: str) -> dict | None:
     return _dict(row)
 
 
+def get_lock_seconds(username: str) -> int:
+    """Segundos restantes de bloqueo de una cuenta (0 si no está bloqueada)."""
+    row = db.fetch_one(
+        "SELECT locked_until FROM web_users WHERE username = ?", (username.strip(),)
+    )
+    if row is None or not row["locked_until"]:
+        return 0
+    try:
+        end = datetime.fromisoformat(row["locked_until"])
+    except ValueError:
+        return 0
+    return max(0, int((end - datetime.now()).total_seconds()))
+
+
+def record_failed_login(username: str) -> tuple[int, bool]:
+    """Registra un intento fallido y bloquea si se llega al máximo.
+
+    Devuelve (intentos_acumulados, se_bloqueó_ahora).
+    No hace nada si el username no existe (evita enumerar cuentas).
+    """
+    username = username.strip()
+    row = db.fetch_one("SELECT id FROM web_users WHERE username = ?", (username,))
+    if row is None:
+        return 0, False
+    db.execute(
+        "UPDATE web_users SET failed_attempts = failed_attempts + 1 WHERE username = ?",
+        (username,),
+    )
+    attempts = db.fetch_one(
+        "SELECT failed_attempts AS c FROM web_users WHERE username = ?", (username,)
+    )["c"]
+    if attempts >= MAX_FAILED_ATTEMPTS:
+        db.execute(
+            "UPDATE web_users SET locked_until = ?, failed_attempts = 0 WHERE username = ?",
+            (datetime.now().isoformat(), username),
+        )
+        return attempts, True
+    return attempts, False
+
+
+def reset_failed_logins(username: str) -> None:
+    """Limpia los contadores tras un login correcto o una edición del admin."""
+    db.execute(
+        "UPDATE web_users SET failed_attempts = 0, locked_until = NULL WHERE username = ?",
+        (username.strip(),),
+    )
+
+
 def update_web_user(
     user_id: int,
     username: str | None = None,
@@ -89,13 +137,15 @@ def update_web_user(
         if len(password.strip()) < 8:
             raise WebUserError("La contraseña debe tener al menos 8 caracteres.")
         db.execute(
-            "UPDATE web_users SET username = ?, password_hash = ?, rol = ?, activo = ? WHERE id = ?",
+            "UPDATE web_users SET username = ?, password_hash = ?, rol = ?, activo = ?, "
+            "failed_attempts = 0, locked_until = NULL WHERE id = ?",
             (new_username, security.hash_password(password.strip()), new_rol,
              1 if activo is None else int(activo), user_id),
         )
     else:
         db.execute(
-            "UPDATE web_users SET username = ?, rol = ?, activo = ? WHERE id = ?",
+            "UPDATE web_users SET username = ?, rol = ?, activo = ?, "
+            "failed_attempts = 0, locked_until = NULL WHERE id = ?",
             (new_username, new_rol, 1 if activo is None else int(activo), user_id),
         )
 
