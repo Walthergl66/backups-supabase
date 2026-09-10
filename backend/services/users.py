@@ -54,6 +54,16 @@ def list_users() -> list[dict]:
     return [user_dict(r) for r in db.fetch_all("SELECT * FROM users ORDER BY nombre")]
 
 
+def list_admin_chat_ids() -> list[int]:
+    """Chats de Telegram con rol admin que recibirán alertas de seguridad."""
+    return [
+        int(r["telegram_chat_id"])
+        for r in db.fetch_all(
+            "SELECT telegram_chat_id FROM users WHERE rol = 'admin' AND activo = 1"
+        )
+    ]
+
+
 def update_user(user_id: int, nombre: str | None = None, rol: str | None = None, activo: bool | None = None) -> None:
     current = db.fetch_one("SELECT * FROM users WHERE id = ?", (user_id,))
     if current is None:
