@@ -2,29 +2,33 @@
 
 from __future__ import annotations
 
-from fastapi import Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException, status
 
 from core import jwt
 
 
-def _unauthorized(detail: str = "Se requiere autenticación.") -> HTTPException:
-    return HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail=detail,
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-
-
-def current_user(authorization: str | None = Header(default=None)) -> dict:
+def get_current_user(authorization: str | None = Header(default=None)) -> dict:
     if not authorization:
-        raise _unauthorized()
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Se requiere autenticación.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     scheme, _, token = authorization.partition(" ")
     if scheme.lower() != "bearer" or not token.strip():
-        raise _unauthorized("Token Bearer inválido o ausente.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token Bearer inválido o ausente.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     try:
         claims = jwt.decode_token(token.strip())
     except jwt.InvalidToken as exc:
-        raise _unauthorized(f"Token inválido: {exc}") from exc
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Token inválido: {exc}",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from exc
     return {
         "id": int(claims["sub"]),
         "username": claims["username"],
@@ -32,13 +36,16 @@ def current_user(authorization: str | None = Header(default=None)) -> dict:
     }
 
 
-def require_admin(user: dict = None) -> dict:
-    """Dependencia combinable: llama después de `current_user`."""
-    if user is None:
-        raise _unauthorized()
+def require_admin(authorization: str | None = Header(default=None)) -> dict:
+    user = get_current_user(authorization)
     if user["rol"] != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Necesitas el rol admin para realizar esta acción.",
         )
     return user
+
+
+def viewer_allowed(user: dict = None) -> bool:
+    """Los operaciones de lectura se permiten a admin y viewer."""
+    return True

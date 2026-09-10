@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
-from admin_web.deps import current_user
+from admin_web.deps import get_current_user
+from core.jwt import create_token
 from services import audit as audit_srv
 from services import web_users as web_users_srv
 
@@ -38,8 +39,5 @@ async def login(request: Request):
 
 
 @router.get("/me")
-async def me(user: dict) -> dict:
+async def me(user: dict = Depends(get_current_user)) -> dict:
     return {"id": user["id"], "username": user["username"], "rol": user["rol"]}
-
-
-from core.jwt import create_token  # noqa: E402  (import al final para evitar ciclo)
