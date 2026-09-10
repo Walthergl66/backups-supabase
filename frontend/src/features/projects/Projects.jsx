@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { api } from '../api.js'
+import { deleteProject, listProjects, restoreProject } from '../../services/projects.js'
+import PageHead from '../../components/ui/PageHead.jsx'
+import Flash from '../../components/ui/Flash.jsx'
+import Badge from '../../components/ui/Badge.jsx'
 
 export default function Projects() {
   const [projects, setProjects] = useState([])
@@ -9,8 +12,7 @@ export default function Projects() {
   const estado = params.get('estado') || 'activos'
 
   const load = () => {
-    api
-      .get(`/api/projects?estado=${estado}`)
+    listProjects(estado)
       .then(setProjects)
       .catch((e) => setError(e.message))
   }
@@ -24,7 +26,7 @@ export default function Projects() {
   const del = async (p) => {
     if (!window.confirm(`¿Eliminar el proyecto "${p.slug}"? Se conserva su historial.`)) return
     try {
-      await api.del(`/api/projects/${p.id}`)
+      await deleteProject(p.id)
       load()
     } catch (e) {
       setError(e.message)
@@ -35,7 +37,7 @@ export default function Projects() {
     const slug = window.prompt('Slug para restaurar:', p.slug.replace(/^\(eliminado\)-\d+-/, ''))
     if (slug == null) return
     try {
-      await api.post(`/api/projects/${p.id}/restore`, { slug })
+      await restoreProject(p.id, slug)
       load()
     } catch (e) {
       setError(e.message)
@@ -44,20 +46,16 @@ export default function Projects() {
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1 className="h1">Proyectos</h1>
-          <p className="sub">Proyectos de Supabase configurados para respaldo.</p>
-        </div>
+      <PageHead title="Proyectos" sub="Proyectos de Supabase configurados para respaldo.">
         <div className="inline-actions">
           <Link className="btn btn-ghost" to={`/proyectos?estado=${estado === 'eliminados' ? 'activos' : 'eliminados'}`}>
             {estado === 'eliminados' ? 'Ver activos' : 'Ver eliminados'}
           </Link>
           <Link className="btn btn-primary" to="/proyectos/nuevo">Nuevo proyecto</Link>
         </div>
-      </div>
+      </PageHead>
 
-      {error && <div className="flash flash-err">{error}</div>}
+      {error && <Flash type="err">{error}</Flash>}
 
       <div className="card">
         <div className="table-scroll">
@@ -81,9 +79,9 @@ export default function Projects() {
                   <td className="mono muted">{p.project_ref ? p.project_ref.slice(0, 8) + '…' : '-'}</td>
                   <td>
                     {p.activo ? (
-                      <span className="badge badge-ok">Activo</span>
+                      <Badge tone="ok">Activo</Badge>
                     ) : (
-                      <span className="badge badge-mid">Eliminado</span>
+                      <Badge tone="mid">Eliminado</Badge>
                     )}
                   </td>
                   <td className="td-actions">

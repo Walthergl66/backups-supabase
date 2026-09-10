@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api } from '../api.js'
+import { getDashboard } from '../../services/dashboard.js'
+import PageHead from '../../components/ui/PageHead.jsx'
+import Flash from '../../components/ui/Flash.jsx'
+import Badge from '../../components/ui/Badge.jsx'
 
 const tiles = [
   ['proyectos', 'Proyectos activos', 'projects', '#22d3ee'],
@@ -15,23 +18,17 @@ export default function Dashboard() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    api.get('/api/dashboard').then(setData).catch((e) => setError(e.message))
+    getDashboard().then(setData).catch((e) => setError(e.message))
   }, [])
 
-  if (error) return <div className="flash flash-err">{error}</div>
+  if (error) return <Flash type="err">{error}</Flash>
   if (!data) return <div className="muted">Cargando…</div>
 
   const d = data.dashboard
-  const bySlug = (slug) => d.projects.find((p) => p.slug === slug)
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1 className="h1">Dashboard</h1>
-          <p className="sub">Resumen del sistema de respaldo de Supabase.</p>
-        </div>
-      </div>
+      <PageHead title="Dashboard" sub="Resumen del sistema de respaldo de Supabase." />
 
       <div className="grid grid-stat">
         {tiles.map(([key, label, icon, color]) => (
@@ -75,9 +72,9 @@ export default function Dashboard() {
                       <td className="mono">-</td>
                       <td>
                         {!ultimo ? (
-                          <span className="badge badge-mid">Pendiente</span>
+                          <Badge tone="mid">Pendiente</Badge>
                         ) : (
-                          <span className="badge badge-ok">OK</span>
+                          <Badge tone="ok">OK</Badge>
                         )}
                       </td>
                     </tr>
@@ -104,7 +101,7 @@ export default function Dashboard() {
                   <tr key={a.id}>
                     <td className="muted">{new Date(a.fecha).toLocaleString('es')}</td>
                     <td>
-                      <span className={`badge ${a.resultado === 'ok' ? 'badge-ok' : 'badge-err'}`}>{a.resultado}</span>
+                      <Badge tone={a.resultado === 'ok' ? 'ok' : 'err'}>{a.resultado}</Badge>
                       <div style={{ fontSize: 12 }} className="mono">{a.accion}</div>
                     </td>
                   </tr>
