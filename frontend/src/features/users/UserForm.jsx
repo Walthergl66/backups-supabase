@@ -112,15 +112,17 @@ export default function UserForm() {
               <div className="field">
                 <label className="check" style={{ marginTop: 26 }}>
                   <input type="checkbox" checked={form.activo} onChange={setChk('activo')} />
-                  Activo
+                  Cuenta activa
                 </label>
+              </div>
+            </div>
 
             {form.rol === 'usuario' && (
               <div className="field">
-                <label className="label">Permisos por proyecto</label>
+                <label className="label">Acceso por proyecto</label>
                 <div className="checkbox-scroll">
                   <table className="t">
-                    <thead><tr><th>Proyecto</th><th style={{ textAlign: 'center' }}>Respaldo</th><th style={{ textAlign: 'center' }}>Monitorear</th></tr></thead>
+                    <thead><tr><th>Proyecto</th><th style={{ textAlign: 'center' }}>Puede respaldar</th><th style={{ textAlign: 'center' }}>Puede monitorear</th></tr></thead>
                     <tbody>
                       {(projects || []).map((p) => (
                         <tr key={p.id}>
