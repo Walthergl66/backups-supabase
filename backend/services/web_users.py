@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta
+
 from core import db, security
+
+MAX_FAILED_ATTEMPTS = 8
+LOCKOUT_MINUTES = 15
 
 
 class WebUserError(Exception):

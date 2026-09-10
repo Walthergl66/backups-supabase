@@ -37,11 +37,17 @@ def init_db() -> None:
 
 def _migrate() -> None:
     """Migraciones incrementales para bases de datos existentes."""
+    statements = [
+        "ALTER TABLE users ADD COLUMN supabase_pat_encrypted TEXT",
+        "ALTER TABLE web_users ADD COLUMN failed_attempts INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE web_users ADD COLUMN locked_until TEXT",
+    ]
     with connect() as conn:
-        try:
-            conn.execute("ALTER TABLE users ADD COLUMN supabase_pat_encrypted TEXT")
-        except sqlite3.OperationalError:
-            pass  # Columna ya existe
+        for statement in statements:
+            try:
+                conn.execute(statement)
+            except sqlite3.OperationalError:
+                pass  # La columna ya existe
 
 
 def fetch_one(sql: str, params: Iterable[Any] = ()) -> sqlite3.Row | None:

@@ -71,7 +71,9 @@ CREATE TABLE web_users (
     password_hash TEXT NOT NULL,                    -- hash PBKDF2-SHA256
     rol           TEXT NOT NULL DEFAULT 'admin',    -- admin | viewer
     created_at    TEXT NOT NULL DEFAULT (datetime('now')),
-    activo        INTEGER NOT NULL DEFAULT 1
+    activo        INTEGER NOT NULL DEFAULT 1,
+    failed_attempts INTEGER NOT NULL DEFAULT 0,     -- intentos de login fallidos
+    locked_until    TEXT                            -- cuándo se desbloquea la cuenta (ISO)
 );
 
 -- ------------------------------------------------------------------
