@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api } from '../api.js'
+import { deleteWebUser, listWebUsers } from '../../services/webUsers.js'
+import PageHead from '../../components/ui/PageHead.jsx'
+import Flash from '../../components/ui/Flash.jsx'
+import Badge from '../../components/ui/Badge.jsx'
 
 export default function WebUsers() {
   const [users, setUsers] = useState([])
   const [error, setError] = useState('')
 
-  const load = () => api.get('/api/web-users').then(setUsers).catch((e) => setError(e.message))
+  const load = () => listWebUsers().then(setUsers).catch((e) => setError(e.message))
 
   useEffect(() => {
     load()
@@ -15,7 +18,7 @@ export default function WebUsers() {
   const del = async (u) => {
     if (!window.confirm(`¿Eliminar al usuario web "${u.username}"?`)) return
     try {
-      await api.del(`/api/web-users/${u.id}`)
+      await deleteWebUser(u.id)
       load()
     } catch (e) {
       setError(e.message)
@@ -24,15 +27,11 @@ export default function WebUsers() {
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1 className="h1">Usuarios Web</h1>
-          <p className="sub">Quienes acceden a este panel. Roles: admin o viewer.</p>
-        </div>
+      <PageHead title="Usuarios Web" sub="Quienes acceden a este panel. Roles: admin o viewer.">
         <Link className="btn btn-primary" to="/usuarios-web/nuevo">Nuevo usuario web</Link>
-      </div>
+      </PageHead>
 
-      {error && <div className="flash flash-err">{error}</div>}
+      {error && <Flash type="err">{error}</Flash>}
 
       <div className="card">
         <div className="table-scroll">
@@ -50,7 +49,7 @@ export default function WebUsers() {
                   <td>
                     <span className={`chip ${u.rol === 'admin' ? 'chip-admin' : 'chip-viewer'}`}>{u.rol}</span>
                   </td>
-                  <td>{u.activo ? <span className="badge badge-ok">Activo</span> : <span className="badge badge-mid">Inactivo</span>}</td>
+                  <td>{u.activo ? <Badge tone="ok">Activo</Badge> : <Badge tone="mid">Inactivo</Badge>}</td>
                   <td className="muted">{new Date(u.created_at).toLocaleDateString('es')}</td>
                   <td className="td-actions">
                     <Link className="btn-link" to={`/usuarios-web/${u.id}/editar`}>Editar</Link>

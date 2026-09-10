@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { api, ApiError } from '../api.js'
+import { createWebUser, getWebUser, updateWebUser } from '../../services/webUsers.js'
+import { ApiError } from '../../services/http.js'
+import PageHead from '../../components/ui/PageHead.jsx'
+import Flash from '../../components/ui/Flash.jsx'
 
 export default function WebUserForm() {
   const { id } = useParams()
@@ -13,8 +16,7 @@ export default function WebUserForm() {
 
   useEffect(() => {
     if (!id) return
-    api
-      .get(`/api/web-users/${id}`)
+    getWebUser(id)
       .then((u) => setForm((f) => ({ ...f, username: u.username, rol: u.rol, activo: u.activo !== false })))
       .catch((e) => setError(e.message))
   }, [id])
@@ -30,9 +32,9 @@ export default function WebUserForm() {
     if (form.password) payload.password = form.password
     try {
       if (editing) {
-        await api.put(`/api/web-users/${id}`, payload)
+        await updateWebUser(id, payload)
       } else {
-        await api.post('/api/web-users', payload)
+        await createWebUser(payload)
       }
       navigate('/usuarios-web')
     } catch (err) {
@@ -44,14 +46,9 @@ export default function WebUserForm() {
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1 className="h1">{editing ? 'Editar usuario web' : 'Nuevo usuario web'}</h1>
-          <p className="sub">Los viewers solo pueden consultar; los admins pueden administrar.</p>
-        </div>
-      </div>
+      <PageHead title={editing ? 'Editar usuario web' : 'Nuevo usuario web'} sub="Los viewers solo pueden consultar; los admins pueden administrar." />
 
-      {error && <div className="flash flash-err">{error}</div>}
+      {error && <Flash type="err">{error}</Flash>}
 
       <div className="card" style={{ maxWidth: 480 }}>
         <div className="card-body">

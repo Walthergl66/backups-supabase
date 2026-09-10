@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { api, ApiError } from '../api.js'
+import { createUser, getUser, saveUserPermissions, updateUser } from '../../services/users.js'
+import { listActiveProjects } from '../../services/projects.js'
+import { ApiError } from '../../services/http.js'
+import PageHead from '../../components/ui/PageHead.jsx'
+import Flash from '../../components/ui/Flash.jsx'
 
 export default function UserForm() {
   const { id } = useParams()
@@ -14,7 +18,7 @@ export default function UserForm() {
   const [sending, setSending] = useState(false)
 
   const loadPermissions = (userId) =>
-    api.get(`/api/users/${userId}`).then((u) => {
+    getUser(userId).then((u) => {
       setForm((f) => ({ ...f, rol: u.rol, activo: u.activo !== false }))
       const map = {}
       for (const p of u.permissions || []) map[p.project_id] = p
@@ -22,7 +26,7 @@ export default function UserForm() {
     })
 
   useEffect(() => {
-    api.get('/api/projects/active').then(setProjects).catch((e) => setError(e.message))
+    listActiveProjects().then(setProjects).catch((e) => setError(e.message))
   }, [])
 
   useEffect(() => {
@@ -45,13 +49,13 @@ export default function UserForm() {
     try {
       let userId = id
       if (editing) {
-        await api.put(`/api/users/${id}`, {
+        await updateUser(id, {
           nombre: form.nombre,
           rol: form.rol,
           activo: form.activo,
         })
       } else {
-        const res = await api.post('/api/users', {
+        const res = await createUser({
           telegram_chat_id: form.telegram_chat_id,
           nombre: form.nombre,
           rol: form.rol,
@@ -59,7 +63,7 @@ export default function UserForm() {
         userId = res.id
       }
       if (form.rol === 'usuario') {
-        await api.post(`/api/users/${userId}/permissions`, { permissions: rowsFromPerms() })
+        await saveUserPermissions(userId, rowsFromPerms())
       }
       navigate('/usuarios')
     } catch (err) {
@@ -80,14 +84,9 @@ export default function UserForm() {
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1 className="h1">{editing ? 'Editar usuario de Telegram' : 'Nuevo usuario de Telegram'}</h1>
-          <p className="sub">Los admins pueden respaldar y monitorear todos los proyectos.</p>
-        </div>
-      </div>
+      <PageHead title={editing ? 'Editar usuario de Telegram' : 'Nuevo usuario de Telegram'} sub="Los admins pueden respaldar y monitorear todos los proyectos." />
 
-      {error && <div className="flash flash-err">{error}</div>}
+      {error && <Flash type="err">{error}</Flash>}
 
       <div className="card">
         <div className="card-body">
