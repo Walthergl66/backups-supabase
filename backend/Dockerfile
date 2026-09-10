@@ -15,6 +15,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# Usuario sin privilegios. UID/GID 1000: coincide con el dueño del bind
+# mount ./data en el host (elpajarowtf) para poder leer/escribir ahí.
+RUN useradd --no-create-home --uid 1000 --shell /usr/sbin/nologin appuser \
+    && chown -R appuser:appuser /app
+
+USER appuser
+
 EXPOSE 8080
 
 CMD ["python", "main.py"]

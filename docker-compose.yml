@@ -4,11 +4,19 @@ services:
     image: supabase-backups-api:latest
     container_name: supabase-backups-api
     restart: unless-stopped
+    user: "1000:1000"
     env_file: ./backend/.env
     expose:
       - "8080"
     volumes:
       - ./data:/data                # SQLite + backups persistidos fuera del contenedor
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/api/health', timeout=5)"]
       interval: 30s
@@ -21,8 +29,16 @@ services:
     image: supabase-backups-frontend:latest
     container_name: supabase-backups-frontend
     restart: unless-stopped
+    user: "1000:1000"
     depends_on:
       backend:
         condition: service_healthy
     ports:
-      - "8080:80"                   # SPA + proxy /api -> backend
+      - "8080:8080"                   # SPA + proxy /api -> backend
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
