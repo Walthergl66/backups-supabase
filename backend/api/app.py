@@ -87,7 +87,7 @@ def _setup_bearer_auth(app: FastAPI) -> None:
     def _openapi() -> dict:
         if app.openapi_schema:
             return app.openapi_schema
-        schema = app.openapi()
+        schema = FastAPI.openapi(app)
         schema.setdefault("components", {}).setdefault("securitySchemes", {})["bearerAuth"] = {
             "type": "http",
             "scheme": "bearer",
