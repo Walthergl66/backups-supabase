@@ -1,38 +1,46 @@
 {% extends "base.html" %}
 {% block title %}Auditoría — Supabase Backups{% endblock %}
+{% block header %}Auditoría{% endblock %}
 {% block content %}
-<div class="flex items-center justify-between mb-4">
-  <h1 class="text-2xl font-bold">Log de auditoría</h1>
-  <a href="/audit" class="text-sm text-cyan-700 hover:underline">Actualizar</a>
+
+<div class="sb-page-head">
+  <div>
+    <h1 class="sb-h1">Log de auditoría</h1>
+    <p class="sb-sub">Todas las acciones ejecutadas por el bot y la interfaz web</p>
+  </div>
+  <a href="/audit" class="sb-btn sb-btn-ghost sb-btn-sm">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4L21 8"/><path d="M21 3v5h-5"/></svg>
+    Actualizar
+  </a>
 </div>
 
-<div class="bg-white rounded-lg shadow overflow-hidden">
-  <table class="w-full text-sm">
+<div class="sb-card" style="overflow-x:auto">
+  <table class="sb-table">
     <thead>
-      <tr class="text-left text-slate-500 border-b bg-slate-50">
-        <th class="px-4 py-2">Timestamp</th>
-        <th class="px-4 py-2">Acción</th>
-        <th class="px-4 py-2">Resultado</th>
-        <th class="px-4 py-2">Usuario</th>
-        <th class="px-4 py-2">Proyecto</th>
-        <th class="px-4 py-2">Detalle</th>
+      <tr>
+        <th>Timestamp</th>
+        <th>Acción</th>
+        <th>Resultado</th>
+        <th>Usuario</th>
+        <th>Proyecto</th>
+        <th>Detalle</th>
       </tr>
     </thead>
     <tbody>
       {% for a in rows %}
-      <tr class="border-t">
-        <td class="px-4 py-2 text-slate-500 whitespace-nowrap">{{ a.timestamp }}</td>
-        <td class="px-4 py-2 font-mono text-xs">{{ a.accion }}</td>
-        <td class="px-4 py-2">
-          {% if a.resultado == 'ok' %}<span class="text-emerald-600 font-semibold">ok</span>
-          {% else %}<span class="text-red-600 font-semibold">error</span>{% endif %}
+      <tr>
+        <td class="muted" style="white-space:nowrap">{{ a.timestamp }}</td>
+        <td class="mono" style="color:var(--accent)">{{ a.accion }}</td>
+        <td>
+          {% if a.resultado == 'ok' %}<span class="sb-badge sb-badge-ok">ok</span>
+          {% else %}<span class="sb-badge sb-badge-err">error</span>{% endif %}
         </td>
-        <td class="px-4 py-2 text-slate-500">{{ a.web_user or a.telegram_user or '—' }}</td>
-        <td class="px-4 py-2 font-mono text-xs text-slate-500">{{ a.project_slug or '—' }}</td>
-        <td class="px-4 py-2 text-slate-500">{{ a.detalle or '' }}</td>
+        <td class="muted">{{ a.web_user or a.telegram_user or '—' }}</td>
+        <td class="mono muted">{{ a.project_slug or '—' }}</td>
+        <td class="muted" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ a.detalle or '' }}</td>
       </tr>
       {% else %}
-      <tr><td colspan="6" class="px-4 py-4 text-slate-500">Sin registros.</td></tr>
+      <tr class="empty"><td colspan="6">Sin registros.</td></tr>
       {% endfor %}
     </tbody>
   </table>

@@ -1,41 +1,45 @@
 {% extends "base.html" %}
 {% block title %}Usuario web — Supabase Backups{% endblock %}
+{% block header %}{{ 'Nuevo usuario web' if not user else 'Editar usuario web: ' ~ user.username }}{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-bold mb-4">{{ 'Nuevo usuario web' if not user else 'Editar usuario web: ' ~ user.username }}</h1>
 
-<div class="max-w-lg bg-white rounded-lg shadow p-6">
-  <form method="post" action="{{ '/web-users/create' if not user else '/web-users/' ~ user.id ~ '/update' }}" class="space-y-4">
+<div class="sb-page-head">
+  <h1 class="sb-h1">{{ 'Nuevo usuario web' if not user else 'Editar usuario web: ' ~ user.username }}</h1>
+</div>
+
+<div class="sb-card" style="max-width:560px;padding:22px">
+  <form method="post" action="{{ '/web-users/create' if not user else '/web-users/' ~ user.id ~ '/update' }}">
     <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-    <div>
-      <label class="block text-sm font-medium mb-1">Nombre de usuario</label>
-      <input name="username" value="{{ user.username if user else '' }}" required class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+    <div class="sb-field">
+      <label class="sb-label">Nombre de usuario</label>
+      <input name="username" class="sb-input" value="{{ user.username if user else '' }}" required autocomplete="off">
     </div>
-    <div>
-      <label class="block text-sm font-medium mb-1">
-        Contraseña {% if user %}<span class="text-slate-400">(vacío = no cambiar)</span>{% endif %}
+    <div class="sb-field">
+      <label class="sb-label">
+        Contraseña {% if user %}<span class="muted" style="font-weight:400">(vacío = no cambiar)</span>{% endif %}
       </label>
-      <input name="password" type="password" {% if not user %}required minlength="8"{% endif %} class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
-      <p class="text-xs text-slate-400 mt-1">Mínimo 8 caracteres.</p>
+      <input name="password" type="password" class="sb-input" {% if not user %}required minlength="8"{% endif %} autocomplete="new-password">
+      <div class="sb-hint">Mínimo 8 caracteres.</div>
     </div>
-    <div class="grid md:grid-cols-2 gap-4">
-      <div>
-        <label class="block text-sm font-medium mb-1">Rol</label>
-        <select name="rol" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+    <div class="sb-form-grid">
+      <div class="sb-field">
+        <label class="sb-label">Rol</label>
+        <select name="rol" class="sb-select">
           <option value="admin" {% if not user or user.rol == 'admin' %}selected{% endif %}>admin (CRUD completo)</option>
           <option value="viewer" {% if user and user.rol == 'viewer' %}selected{% endif %}>viewer (solo lectura)</option>
         </select>
       </div>
-      <div>
-        <label class="block text-sm font-medium mb-1">Activo</label>
-        <select name="activo" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+      <div class="sb-field">
+        <label class="sb-label">Activo</label>
+        <select name="activo" class="sb-select">
           <option value="1" {% if not user or user.activo %}selected{% endif %}>Sí</option>
           <option value="0" {% if user and not user.activo %}selected{% endif %}>No</option>
         </select>
       </div>
     </div>
-    <div class="flex gap-2">
-      <button class="rounded bg-cyan-700 hover:bg-cyan-800 text-white px-4 py-2 text-sm font-semibold">Guardar</button>
-      <a href="/web-users" class="rounded bg-slate-200 hover:bg-slate-300 px-4 py-2 text-sm">Cancelar</a>
+    <div class="sb-inline-actions">
+      <button class="sb-btn sb-btn-primary">Guardar</button>
+      <a href="/web-users" class="sb-btn sb-btn-ghost">Cancelar</a>
     </div>
   </form>
 </div>

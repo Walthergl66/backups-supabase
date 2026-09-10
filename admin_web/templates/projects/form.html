@@ -1,54 +1,57 @@
 {% extends "base.html" %}
 {% block title %}Proyecto — Supabase Backups{% endblock %}
+{% block header %}{{ 'Nuevo proyecto' if not project else 'Editar proyecto: ' ~ project.slug }}{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-bold mb-4">{{ 'Nuevo proyecto' if not project else 'Editar proyecto: ' ~ project.slug }}</h1>
 
-<div class="max-w-xl bg-white rounded-lg shadow p-6">
-  <form method="post" action="{{ '/projects/create' if not project else '/projects/' ~ project.id ~ '/update' }}" class="space-y-4">
+<div class="sb-page-head">
+  <h1 class="sb-h1">{{ 'Nuevo proyecto' if not project else 'Editar proyecto: ' ~ project.slug }}</h1>
+</div>
+
+<div class="sb-card" style="max-width:720px;padding:22px">
+  <form method="post" action="{{ '/projects/create' if not project else '/projects/' ~ project.id ~ '/update' }}">
     <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-    <div class="grid md:grid-cols-2 gap-4">
-      <div>
-        <label class="block text-sm font-medium mb-1">Slug (identifica en el bot)</label>
-        <input name="slug" value="{{ project.slug if project else '' }}" required
-               pattern="[a-z0-9][a-z0-9_-]*"
-               class="w-full rounded border border-slate-300 px-3 py-2 text-sm font-mono">
-        <p class="text-xs text-slate-400 mt-1">Minúsculas, números, guiones. Ej.: mi_app_prod</p>
+    <div class="sb-form-grid">
+      <div class="sb-field">
+        <label class="sb-label">Slug (identifica en el bot)</label>
+        <input name="slug" class="sb-input mono" value="{{ project.slug if project else '' }}" required
+               pattern="[a-z0-9][a-z0-9_-]*" placeholder="mi-app-prod">
+        <div class="sb-hint">Minúsculas, números, guiones. Ej.: mi_app_prod</div>
       </div>
-      <div>
-        <label class="block text-sm font-medium mb-1">Nombre</label>
-        <input name="nombre" value="{{ project.nombre if project else '' }}" required class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+      <div class="sb-field">
+        <label class="sb-label">Nombre</label>
+        <input name="nombre" class="sb-input" value="{{ project.nombre if project else '' }}" required>
       </div>
     </div>
-    <div>
-      <label class="block text-sm font-medium mb-1">Cuenta de Supabase</label>
-      <select name="account_id" required class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+    <div class="sb-field">
+      <label class="sb-label">Cuenta de Supabase</label>
+      <select name="account_id" class="sb-select" required>
         {% for a in accounts %}
         <option value="{{ a.id }}" {% if project and project.account_id == a.id %}selected{% endif %}>{{ a.nombre }}</option>
         {% endfor %}
       </select>
     </div>
-    <div>
-      <label class="block text-sm font-medium mb-1">
+    <div class="sb-field">
+      <label class="sb-label">
         Cadena de conexión PostgreSQL (pooler)
-        {% if project %}<span class="text-slate-400">(actual cifrada: {{ project.connection_masked }} — vacío para no cambiar)</span>{% endif %}
+        {% if project %}<span class="muted" style="font-weight:400">(actual cifrada: {{ project.connection_masked }} — vacío para no cambiar)</span>{% endif %}
       </label>
-      <input name="connection" type="text" placeholder="postgresql://postgres.xxxx:password@aws-0-us-east-1.pooler.supabase.com:5432/postgres"
-             {% if not project %}required{% endif %}
-             class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+      <input name="connection" type="text" class="sb-input mono"
+             placeholder="postgresql://postgres.xxxx:password@aws-0-us-east-1.pooler.supabase.com:5432/postgres"
+             {% if not project %}required{% endif %}>
     </div>
-    <div>
-      <label class="block text-sm font-medium mb-1">project_ref (Management API)</label>
-      <input name="project_ref" value="{{ project.project_ref if project else '' }}" required class="w-full rounded border border-slate-300 px-3 py-2 text-sm font-mono">
+    <div class="sb-field">
+      <label class="sb-label">project_ref (Management API)</label>
+      <input name="project_ref" class="sb-input mono" value="{{ project.project_ref if project else '' }}" required>
     </div>
-    <div class="flex items-center gap-4">
-      <label class="flex items-center gap-2 text-sm">
-        <input type="checkbox" name="activo" value="1" class="rounded" {% if not project or project.activo %}checked{% endif %}>
+    <div class="sb-field">
+      <label class="sb-check">
+        <input type="checkbox" name="activo" value="1" {% if not project or project.activo %}checked{% endif %}>
         Activo (visible para el bot)
       </label>
     </div>
-    <div class="flex gap-2">
-      <button class="rounded bg-cyan-700 hover:bg-cyan-800 text-white px-4 py-2 text-sm font-semibold">Guardar</button>
-      <a href="/projects" class="rounded bg-slate-200 hover:bg-slate-300 px-4 py-2 text-sm">Cancelar</a>
+    <div class="sb-inline-actions">
+      <button class="sb-btn sb-btn-primary">Guardar</button>
+      <a href="/projects" class="sb-btn sb-btn-ghost">Cancelar</a>
     </div>
   </form>
 </div>

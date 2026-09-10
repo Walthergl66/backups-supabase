@@ -1,73 +1,94 @@
 {% extends "base.html" %}
 {% block title %}Dashboard — Supabase Backups{% endblock %}
+{% block header %}Dashboard{% endblock %}
 {% block content %}
 
-<h1 class="text-2xl font-bold mb-4">Dashboard</h1>
+<div class="sb-page-head">
+  <div>
+    <h1 class="sb-h1">Dashboard</h1>
+    <p class="sb-sub">Resumen del estado de tus respaldos y proyectos</p>
+  </div>
+  {% if is_admin %}
+  <a href="/import-projects" class="sb-btn sb-btn-violet">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+    Importar proyectos
+  </a>
+  {% endif %}
+</div>
 
-<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-  <div class="bg-white rounded-lg shadow p-4">
-    <div class="text-2xl font-bold">{{ dashboard.cuentas }}</div>
-    <div class="text-sm text-slate-500">Cuentas</div>
+<div class="sb-form-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:22px">
+  <div class="sb-card sb-stat">
+    <div class="sb-stat-ico" style="background:rgba(34,211,238,.12);color:var(--accent)">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a7 7 0 0 1 7 7c0 3.4-2 5.5-4 7.2V18a2 2 0 0 1-2 2H11a2 2 0 0 1-2-2v-1.8C7 14.5 5 12.4 5 9a7 7 0 0 1 7-7z"/></svg>
+    </div>
+    <div><div class="sb-stat-val">{{ dashboard.cuentas }}</div><div class="sb-stat-lbl">Cuentas</div></div>
   </div>
-  <div class="bg-white rounded-lg shadow p-4">
-    <div class="text-2xl font-bold">{{ dashboard.proyectos }}</div>
-    <div class="text-sm text-slate-500">Proyectos activos</div>
+  <div class="sb-card sb-stat">
+    <div class="sb-stat-ico" style="background:rgba(167,139,250,.12);color:var(--accent-2)">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>
+    </div>
+    <div><div class="sb-stat-val">{{ dashboard.proyectos }}</div><div class="sb-stat-lbl">Proyectos activos <span class="muted">/ {{ dashboard.proyectos_total }}</span></div></div>
   </div>
-  <div class="bg-white rounded-lg shadow p-4">
-    <div class="text-2xl font-bold">{{ dashboard.backups_ok }}</div>
-    <div class="text-sm text-emerald-600">Backups OK</div>
+  <div class="sb-card sb-stat">
+    <div class="sb-stat-ico" style="background:rgba(52,211,153,.12);color:var(--success)">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/></svg>
+    </div>
+    <div><div class="sb-stat-val">{{ dashboard.backups_ok }}</div><div class="sb-stat-lbl">Backups OK</div></div>
   </div>
-  <div class="bg-white rounded-lg shadow p-4">
-    <div class="text-2xl font-bold">{{ dashboard.backups_error }}</div>
-    <div class="text-sm text-red-600">Backups fallidos</div>
+  <div class="sb-card sb-stat">
+    <div class="sb-stat-ico" style="background:rgba(251,113,133,.12);color:var(--danger)">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+    </div>
+    <div><div class="sb-stat-val">{{ dashboard.backups_error }}</div><div class="sb-stat-lbl">Backups fallidos</div></div>
   </div>
 </div>
 
-<div class="grid md:grid-cols-2 gap-6">
-  <div class="bg-white rounded-lg shadow overflow-hidden">
-    <div class="px-4 py-3 border-b bg-slate-50 flex items-center justify-between">
-      <span class="font-semibold text-sm">Proyectos activos</span>
-      <a href="/projects" class="text-sm text-cyan-700 hover:underline">Ver todos</a>
+<div class="sb-form-grid" style="grid-template-columns:1.4fr 1fr;gap:16px;align-items:start">
+  <div class="sb-card">
+    <div class="sb-card-head">
+      <span class="sb-card-title">Proyectos activos</span>
+      <a href="/projects" class="sb-btn-link">Ver todos</a>
     </div>
-    <div class="p-4">
+    <div style="overflow-x:auto">
       {% if dashboard.projects %}
-      <table class="w-full text-sm">
-        <thead><tr class="text-left text-slate-500"><th class="pb-2">Slug</th><th class="pb-2">Último backup</th></tr></thead>
+      <table class="sb-table">
+        <thead><tr><th>Slug</th><th>Nombre</th><th>Último backup</th></tr></thead>
         <tbody>
           {% for p in dashboard.projects %}
-          <tr class="border-t">
-            <td class="py-1.5">{{ p.slug }}</td>
-            <td class="py-1.5 text-slate-500">{{ p.ultimo_backup or 'sin backups' }}</td>
+          <tr>
+            <td class="mono">{{ p.slug }}</td>
+            <td>{{ p.nombre }}</td>
+            <td class="muted">{{ p.ultimo_backup or 'sin backups' }}</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
       {% else %}
-        <p class="text-sm text-slate-500">Sin proyectos activos.</p>
+      <div class="sb-card-body muted">Sin proyectos activos.</div>
       {% endif %}
     </div>
   </div>
 
-  <div class="bg-white rounded-lg shadow overflow-hidden">
-    <div class="px-4 py-3 border-b bg-slate-50 flex items-center justify-between">
-      <span class="font-semibold text-sm">Auditoría reciente</span>
-      <a href="/audit" class="text-sm text-cyan-700 hover:underline">Ver todo</a>
+  <div class="sb-card">
+    <div class="sb-card-head">
+      <span class="sb-card-title">Auditoría reciente</span>
+      <a href="/audit" class="sb-btn-link">Ver todo</a>
     </div>
-    <div class="p-4">
+    <div class="sb-card-body" style="padding:8px 14px">
       {% if recent_audit %}
-      <ul class="divide-y text-sm">
+      <ul style="list-style:none;margin:0;padding:0">
         {% for a in recent_audit %}
-        <li class="py-1.5 flex justify-between gap-2">
-          <span class="truncate">
-            <span class="font-mono text-xs">{{ a.accion }}</span>
-            <span class="text-slate-500">— {{ a.detalle or '' }}</span>
+        <li style="padding:8px 0;border-bottom:1px solid var(--border-soft);display:flex;justify-content:space-between;gap:12px">
+          <span style="min-width:0">
+            <span class="mono" style="color:var(--accent)">{{ a.accion }}</span>
+            <span class="muted" style="display:block;font-size:12px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ a.detalle or '' }}</span>
           </span>
-          <span class="text-slate-400 text-xs whitespace-nowrap">{{ a.timestamp }}</span>
+          <span class="muted" style="font-size:11px;flex-shrink:0">{{ a.timestamp }}</span>
         </li>
         {% endfor %}
       </ul>
       {% else %}
-        <p class="text-sm text-slate-500">Sin actividad registrada.</p>
+      <span class="muted">Sin actividad registrada.</span>
       {% endif %}
     </div>
   </div>

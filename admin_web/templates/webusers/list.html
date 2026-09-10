@@ -1,44 +1,58 @@
 {% extends "base.html" %}
 {% block title %}Usuarios Web — Supabase Backups{% endblock %}
+{% block header %}Usuarios de la interfaz web{% endblock %}
 {% block content %}
-<div class="flex items-center justify-between mb-4">
-  <h1 class="text-2xl font-bold">Usuarios de la interfaz web</h1>
+
+<div class="sb-page-head">
+  <div>
+    <h1 class="sb-h1">Usuarios de la interfaz web</h1>
+    <p class="sb-sub">{{ web_users|length }} {{ 'usuario' if web_users|length == 1 else 'usuarios' }} con acceso al panel</p>
+  </div>
   {% if is_admin %}
-  <a href="/web-users/new" class="rounded bg-cyan-700 hover:bg-cyan-800 text-white px-3 py-2 text-sm font-semibold">Nuevo usuario web</a>
+  <a href="/web-users/new" class="sb-btn sb-btn-primary">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+    Nuevo usuario web
+  </a>
   {% endif %}
 </div>
 
-<div class="bg-white rounded-lg shadow overflow-hidden">
-  <table class="w-full text-sm">
+<div class="sb-card" style="overflow-x:auto">
+  <table class="sb-table">
     <thead>
-      <tr class="text-left text-slate-500 border-b bg-slate-50">
-        <th class="px-4 py-2">Usuario</th>
-        <th class="px-4 py-2">Rol</th>
-        <th class="px-4 py-2">Activo</th>
-        <th class="px-4 py-2">Creado</th>
-        <th class="px-4 py-2"></th>
+      <tr>
+        <th>Usuario</th>
+        <th>Rol</th>
+        <th>Estado</th>
+        <th>Creado</th>
+        <th></th>
       </tr>
     </thead>
     <tbody>
       {% for u in web_users %}
-      <tr class="border-t">
-        <td class="px-4 py-2 font-medium">{{ u.username }}</td>
-        <td class="px-4 py-2">{{ u.rol }}</td>
-        <td class="px-4 py-2">{{ 'Sí' if u.activo else 'No' }}</td>
-        <td class="px-4 py-2 text-slate-500">{{ u.created_at }}</td>
-        <td class="px-4 py-2 text-right space-x-2">
-          <a href="/web-users/{{ u.id }}/edit" class="text-cyan-700 hover:underline">Editar</a>
+      <tr>
+        <td style="font-weight:600">{{ u.username }}</td>
+        <td>
+          {% if u.rol == 'admin' %}<span class="sb-badge sb-badge-info">admin</span>
+          {% else %}<span class="sb-badge sb-badge-mid">viewer</span>{% endif %}
+        </td>
+        <td>
+          {% if u.activo %}<span class="sb-badge sb-badge-ok">activo</span>
+          {% else %}<span class="sb-badge sb-badge-err">inactivo</span>{% endif %}
+        </td>
+        <td class="muted">{{ u.created_at }}</td>
+        <td class="sb-td-actions">
+          <a href="/web-users/{{ u.id }}/edit" class="sb-btn-link">Editar</a>
           {% if is_admin %}
-          <form method="post" action="/web-users/{{ u.id }}/delete" class="inline" onsubmit="return confirm('¿Eliminar al usuario {{ u.username }}?')">
+          <form method="post" action="/web-users/{{ u.id }}/delete" onsubmit="return confirm('¿Eliminar al usuario {{ u.username }}?')" style="margin-left:10px">
             <input type="hidden" name="_csrf" value="{{ csrf_token }}">
             <input type="hidden" name="confirm" value="si">
-            <button class="text-red-600 hover:underline">Eliminar</button>
+            <button class="sb-btn-link sb-btn-link-danger">Eliminar</button>
           </form>
           {% endif %}
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="5" class="px-4 py-4 text-slate-500">No hay usuarios web.</td></tr>
+      <tr class="empty"><td colspan="5">No hay usuarios web.</td></tr>
       {% endfor %}
     </tbody>
   </table>

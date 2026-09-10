@@ -1,62 +1,79 @@
 {% extends "base.html" %}
 {% block title %}Proyectos — Supabase Backups{% endblock %}
+{% block header %}Proyectos{% endblock %}
 {% block content %}
-<div class="flex items-center justify-between mb-4">
-  <h1 class="text-2xl font-bold">Proyectos</h1>
+
+<div class="sb-page-head">
+  <div>
+    <h1 class="sb-h1">Proyectos</h1>
+    <p class="sb-sub">{{ projects|length }} {{ 'proyecto' if projects|length == 1 else 'proyectos' }} en la vista «{{ estado }}»</p>
+  </div>
   {% if is_admin %}
-  <a href="/projects/new" class="rounded bg-cyan-700 hover:bg-cyan-800 text-white px-3 py-2 text-sm font-semibold">Nuevo proyecto</a>
+  <div class="sb-inline-actions">
+    <a href="/import-projects" class="sb-btn sb-btn-violet">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+      Importar proyectos
+    </a>
+    <a href="/projects/new" class="sb-btn sb-btn-primary">Nuevo proyecto</a>
+  </div>
   {% endif %}
 </div>
 
-<div class="mb-4 text-sm flex gap-2">
-  <a href="/projects" class="px-3 py-1 rounded {{ 'bg-slate-900 text-white' if estado == 'activos' else 'bg-white text-slate-700' }}">Activos</a>
-  <a href="/projects?estado=eliminados" class="px-3 py-1 rounded {{ 'bg-slate-900 text-white' if estado == 'eliminados' else 'bg-white text-slate-700' }}">Eliminados</a>
+<div class="sb-inline-actions" style="margin-bottom:16px">
+  <a href="/projects" class="sb-btn sb-btn-sm {{ 'sb-btn-primary' if estado == 'activos' else 'sb-btn-ghost' }}">Activos</a>
+  <a href="/projects?estado=eliminados" class="sb-btn sb-btn-sm {{ 'sb-btn-primary' if estado == 'eliminados' else 'sb-btn-ghost' }}">Eliminados</a>
 </div>
 
-<div class="bg-white rounded-lg shadow overflow-hidden">
-  <table class="w-full text-sm">
+<div class="sb-card" style="overflow-x:auto">
+  <table class="sb-table">
     <thead>
-      <tr class="text-left text-slate-500 border-b bg-slate-50">
-        <th class="px-4 py-2">Slug</th>
-        <th class="px-4 py-2">Nombre</th>
-        <th class="px-4 py-2">Cuenta</th>
-        <th class="px-4 py-2">project_ref</th>
-        <th class="px-4 py-2">Último backup</th>
-        <th class="px-4 py-2"></th>
+      <tr>
+        <th>Slug</th>
+        <th>Nombre</th>
+        <th>Cuenta</th>
+        <th>project_ref</th>
+        <th>Último backup</th>
+        <th></th>
       </tr>
     </thead>
     <tbody>
       {% for p in projects %}
-      <tr class="border-t">
-        <td class="px-4 py-2 font-mono">{{ p.slug }}</td>
-        <td class="px-4 py-2">{{ p.nombre }}</td>
-        <td class="px-4 py-2">{{ p.account_nombre }}</td>
-        <td class="px-4 py-2 font-mono text-slate-500">{{ p.project_ref }}</td>
-        <td class="px-4 py-2 text-slate-500">{{ p.ultimo_backup or 'sin backups' }}</td>
-        <td class="px-4 py-2 text-right space-x-2">
+      <tr>
+        <td class="mono">{{ p.slug }}</td>
+        <td>{{ p.nombre }}</td>
+        <td class="muted">{{ p.account_nombre }}</td>
+        <td class="mono muted">{{ p.project_ref }}</td>
+        <td class="muted">
+          {% if p.ultimo_backup %}
+            <span class="sb-badge sb-badge-ok">{{ p.ultimo_backup }}</span>
+          {% else %}
+            sin backups
+          {% endif %}
+        </td>
+        <td class="sb-td-actions">
           {% if p.activo %}
-            <a href="/projects/{{ p.id }}/history" class="text-cyan-700 hover:underline">Historial</a>
-            <a href="/projects/{{ p.id }}/edit" class="text-cyan-700 hover:underline">Editar</a>
+            <a href="/projects/{{ p.id }}/history" class="sb-btn-link">Historial</a>
+            <a href="/projects/{{ p.id }}/edit" class="sb-btn-link" style="margin-left:10px">Editar</a>
             {% if is_admin %}
-            <form method="post" action="/projects/{{ p.id }}/delete" class="inline" onsubmit="return confirm('¿Eliminar el proyecto {{ p.slug }}? El historial se conserva.')">
+            <form method="post" action="/projects/{{ p.id }}/delete" onsubmit="return confirm('¿Eliminar el proyecto {{ p.slug }}? El historial se conserva.')" style="margin-left:10px">
               <input type="hidden" name="_csrf" value="{{ csrf_token }}">
               <input type="hidden" name="confirm" value="si">
-              <button class="text-red-600 hover:underline">Eliminar</button>
+              <button class="sb-btn-link sb-btn-link-danger">Eliminar</button>
             </form>
             {% endif %}
           {% else %}
             {% if is_admin %}
-            <form method="post" action="/projects/{{ p.id }}/restore" class="inline">
+            <form method="post" action="/projects/{{ p.id }}/restore">
               <input type="hidden" name="_csrf" value="{{ csrf_token }}">
               <input type="hidden" name="slug" value="{{ p.slug.split(')-')[-1] }}">
-              <button class="text-emerald-600 hover:underline">Restaurar</button>
+              <button class="sb-btn sb-btn-success sb-btn-sm">Restaurar</button>
             </form>
             {% endif %}
           {% endif %}
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="6" class="px-4 py-4 text-slate-500">No hay proyectos en este estado.</td></tr>
+      <tr class="empty"><td colspan="6">No hay proyectos en este estado.</td></tr>
       {% endfor %}
     </tbody>
   </table>

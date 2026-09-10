@@ -1,39 +1,50 @@
 {% extends "base.html" %}
 {% block title %}Backups — Supabase Backups{% endblock %}
+{% block header %}Backups{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-bold mb-4">Historial de backups ({{ total }})</h1>
 
-<div class="bg-white rounded-lg shadow overflow-hidden">
-  <table class="w-full text-sm">
+<div class="sb-page-head">
+  <div>
+    <h1 class="sb-h1">Historial de backups <span class="muted" style="font-size:15px;font-weight:500">({{ total }})</span></h1>
+    <p class="sb-sub">Registro de todos los respaldos ejecutados</p>
+  </div>
+  <a href="/backups" class="sb-btn sb-btn-ghost sb-btn-sm">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4L21 8"/><path d="M21 3v5h-5"/></svg>
+    Actualizar
+  </a>
+</div>
+
+<div class="sb-card" style="overflow-x:auto">
+  <table class="sb-table">
     <thead>
-      <tr class="text-left text-slate-500 border-b bg-slate-50">
-        <th class="px-4 py-2">Fecha</th>
-        <th class="px-4 py-2">Proyecto</th>
-        <th class="px-4 py-2">Resultado</th>
-        <th class="px-4 py-2">Tamaño</th>
-        <th class="px-4 py-2">Ruta</th>
+      <tr>
+        <th>Fecha</th>
+        <th>Proyecto</th>
+        <th>Resultado</th>
+        <th>Tamaño</th>
+        <th>Ruta</th>
       </tr>
     </thead>
     <tbody>
       {% for r in rows %}
-      <tr class="border-t">
-        <td class="px-4 py-2 text-slate-500 whitespace-nowrap">{{ r.fecha }}</td>
-        <td class="px-4 py-2 font-mono">{{ r.slug }}</td>
-        <td class="px-4 py-2">
-          {% if r.resultado == 'ok' %}<span class="text-emerald-600 font-semibold">OK</span>
-          {% else %}<span class="text-red-600 font-semibold">FALLO</span>{% endif %}
+      <tr>
+        <td class="muted" style="white-space:nowrap">{{ r.fecha }}</td>
+        <td class="mono">{{ r.slug }}</td>
+        <td>
+          {% if r.resultado == 'ok' %}<span class="sb-badge sb-badge-ok">OK</span>
+          {% else %}<span class="sb-badge sb-badge-err">FALLO</span>{% endif %}
         </td>
-        <td class="px-4 py-2">
+        <td>
           {% if r.tamaño_archivo is not none %}
             {% if r.tamaño_archivo >= 1000000 %}{{ '%.2f'|format(r.tamaño_archivo / 1e6) }} MB
             {% elif r.tamaño_archivo >= 1000 %}{{ '%.1f'|format(r.tamaño_archivo / 1e3) }} KB
             {% else %}{{ r.tamaño_archivo }} B{% endif %}
           {% else %}-{% endif %}
         </td>
-        <td class="px-4 py-2 font-mono text-xs text-slate-500 max-w-xs truncate">{{ r.ruta_archivo or '-' }}</td>
+        <td class="mono muted" style="max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.ruta_archivo or '-' }}</td>
       </tr>
       {% else %}
-      <tr><td colspan="5" class="px-4 py-4 text-slate-500">No hay backups registrados.</td></tr>
+      <tr class="empty"><td colspan="5">No hay backups registrados.</td></tr>
       {% endfor %}
     </tbody>
   </table>

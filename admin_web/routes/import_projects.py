@@ -12,6 +12,7 @@ from services import accounts as accounts_srv
 from services import audit as audit_srv
 from services import projects as projects_srv
 from services import supabase_api as api_srv
+from services import users as users_srv
 
 router = APIRouter(tags=["import_projects"])
 
@@ -72,6 +73,11 @@ async def create_imported_projects(
     pat: str = Form(""),
     account_name: str = Form(""),
     selected_projects: list[str] = Form([]),
+    telegram_nombre: str = Form(""),
+    telegram_chat_id: str = Form(""),
+    telegram_rol: str = Form("usuario"),
+    tg_can_backup: str | None = Form(None),
+    tg_can_monitor: str | None = Form(None),
 ):
     admin = deps.require_admin(request)
     await deps.check_csrf(request)
@@ -89,6 +95,22 @@ async def create_imported_projects(
             "projects": [],
             "pat": pat,
         })
+
+    telegram_nombre = telegram_nombre.strip()
+    try:
+        chat_id = int(telegram_chat_id or 0)
+    except (TypeError, ValueError):
+        chat_id = 0
+
+    if not telegram_nombre or not chat_id:
+        return render(request, "import_projects.html", {
+            "error": "Debes ingresar el nombre y el chat_id del usuario de Telegram.",
+            "projects": [],
+            "pat": pat,
+        })
+
+    can_backup = bool(tg_can_backup)
+    can_monitor = bool(tg_can_monitor)
 
     try:
         all_projects = await asyncio.to_thread(api_srv.list_projects, pat.strip())
@@ -110,6 +132,7 @@ async def create_imported_projects(
         })
 
     created = 0
+    created_ids: list[int] = []
     errors = []
     for ref in selected_projects:
         project_data = next((p for p in all_projects if p["ref"] == ref), None)
@@ -130,7 +153,7 @@ async def create_imported_projects(
         slug = slug[:30]
 
         try:
-            projects_srv.create_project(
+            project_id = projects_srv.create_project(
                 slug=slug,
                 nombre=project_data["name"],
                 account_id=account_id,
@@ -138,14 +161,57 @@ async def create_imported_projects(
                 project_ref=ref,
             )
             created += 1
+            created_ids.append(project_id)
         except projects_srv.ProjectError as exc:
             errors.append(f"{project_data['name']}: {exc}")
 
-    audit_srv.log_action("web_importar_proyectos", "ok", web_user_id=admin["id"],
-                         detalle=f"{created} proyectos importados, {len(errors)} errores")
+    # Registro del usuario de Telegram vinculado a los proyectos importados.
+    telegram_user = None
+    if created_ids:
+        try:
+            existing = users_srv.get_user(chat_id)
+            if existing:
+                user_id = existing["id"]
+                created_user = False
+            else:
+                user_id = users_srv.create_user(
+                    chat_id,
+                    telegram_nombre,
+                    rol=telegram_rol,
+                )
+                created_user = True
+
+            if telegram_rol == "usuario":
+                for project_id in created_ids:
+                    users_srv.upsert_permission(
+                        user_id, project_id,
+                        can_backup=can_backup, can_monitor=can_monitor,
+                    )
+
+            assigned_slugs = [
+                p["slug"]
+                for p in projects_srv.list_projects(only_active=False)
+                if p["id"] in created_ids
+            ]
+            telegram_user = {
+                "nombre": telegram_nombre,
+                "telegram_chat_id": chat_id,
+                "rol": telegram_rol,
+                "created": created_user,
+                "projects": assigned_slugs or ["(permisos sin asignar)"],
+            }
+        except users_srv.UserError as exc:
+            errors.append(f"Usuario de Telegram: {exc}")
+
+    audit_srv.log_action(
+        "web_importar_proyectos", "ok", web_user_id=admin["id"],
+        detalle=(f"{created} proyectos importados, {len(errors)} errores, "
+                 f"chat {chat_id}"),
+    )
 
     return render(request, "import_projects_result.html", {
         "created": created,
         "errors": errors,
         "account_name": account_name,
+        "telegram_user": telegram_user,
     })

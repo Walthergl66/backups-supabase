@@ -80,12 +80,16 @@ La web queda disponible en `http://localhost:8080`.
 
 - Entra con `WEB_ADMIN_USERNAME` / `WEB_ADMIN_PASSWORD` y **cambia la
   contraseña** desde *Usuarios Web*.
-- Crea una **cuenta** de Supabase con su PAT.
-- Crea un **proyecto** (slug, cuenta, cadena de conexión, `project_ref`).
-- Añade tu **usuario de Telegram**: envía cualquier mensaje a tu bot, revisa
-  los logs para ver tu `chat_id` (se registra al intentar usarlo), y luego
-  regístralo en *Usuarios Telegram*. El rol `admin` de Telegram tiene permisos
-  totales; los roles `usuario` se configuran permiso a permiso por proyecto.
+- **Importa desde *Importar proyectos***: pega el PAT de Supabase, selecciona
+  los proyectos y en el mismo paso registra tu **usuario de Telegram**
+  (nombre + `chat_id`). Al confirmar se crea la cuenta, los proyectos y el
+  usuario con permisos sobre los proyectos importados.
+  - ¿Cómo saber tu `chat_id`? Envía cualquier mensaje a tu bot y revisa los
+    logs: se registra al intentar usarlo.
+  - Si prefieres, puedes crear cuentas y proyectos manualmente (CRUD en
+    *Cuentas* / *Proyectos*) y registrar usuarios desde *Usuarios Telegram*.
+    El rol `admin` de Telegram tiene permisos totales; los roles `usuario`
+    se configuran permiso a permiso por proyecto.
 
 Los datos (SQLite y backups) se guardan en `./data`, que es un volumen Docker:
 sobreviven a `docker compose down`.
