@@ -66,6 +66,7 @@ cp backend/.env.example backend/.env
 ```bash
 BOT_TOKEN=123456:ABC...          # token de @BotFather
 ENCRYPTION_KEY=...               # genera una: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+BACKUP_ENCRYPTION_KEY=...        # otra distinta, para cifrar los archivos de backup
 WEB_ADMIN_USERNAME=admin
 WEB_ADMIN_PASSWORD=un-password-fuerte
 SESSION_SECRET=...               # clave HMAC de los JWT: python -c "import secrets; print(secrets.token_urlsafe(48))"
@@ -77,7 +78,9 @@ El resto de variables ya traen valores por defecto razonables
 > **Importante:** `ENCRYPTION_KEY` cifra en reposo los PAT y las cadenas de
 > conexión. Si la pierdes o la cambias, no podrás descifrar lo que ya esté
 > guardado. `SESSION_SECRET` firma los tokens JWT: si la cambias, las sesiones
-> activas se invalidan.
+> activas se invalidan. `BACKUP_ENCRYPTION_KEY` cifra los archivos de backup
+> (`.dump`/`.sql`) en disco; si la cambias, los backups ya cifrados no se
+> podrán descifrar.
 
 **3. Levanta el sistema.**
 
@@ -141,6 +144,9 @@ Toda acción queda registrada en `audit_log` y en el historial
 ## Seguridad
 
 - Credenciales cifradas en reposo con Fernet (clave maestra solo en `.env`).
+- Los archivos de backup (`.dump`/`.sql`) se cifran en disco con Fernet
+  (`BACKUP_ENCRYPTION_KEY`) y su claro se borra; a Telegram se envían
+  descifrados en memoria, sin tocar el disco.
 - La API nunca devuelve credenciales completas (solo los últimos 4 caracteres).
 - Contraseñas web con PBKDF2-SHA256 (salt por usuario).
 - Autenticación API con **tokens JWT** (HS256) enviados como `Authorization: Bearer`.
@@ -165,6 +171,7 @@ docker compose up -d             # volver a arrancar
 |---|---|
 | `BOT_TOKEN` | Token del bot de Telegram (obligatorio) |
 | `ENCRYPTION_KEY` | Clave Fernet para cifrar credenciales (obligatorio) |
+| `BACKUP_ENCRYPTION_KEY` | Clave Fernet para cifrar los archivos de backup en disco (obligatorio) |
 | `SESSION_SECRET` | Clave HMAC para firmar los JWT (obligatorio) |
 | `WEB_ADMIN_USERNAME` / `WEB_ADMIN_PASSWORD` | Solo para crear el primer admin si no hay ninguno |
 | `DB_PATH` | Ruta del SQLite (default `/data/backups.db` en Docker) |

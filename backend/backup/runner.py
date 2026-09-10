@@ -10,6 +10,11 @@ Cada backup produce DOS archivos por proyecto:
   - `.sql`: texto plano equivalente, generado con `pg_restore --file`
     (conversión local sin conexión a la BD), ideal para inspección o para
     restaurar con `psql`.
+
+Al terminar, ambos se CIFRAN EN DISCO con la clave BACKUP_ENCRYPTION_KEY
+(Fernet) y el claro se borra: en `./data/backups` solo existe
+`.dump.enc` / `.sql.enc`. Quien quiera enviarlos/restaurarlos debe
+descifrarlos con la clave desde `core.crypto`.
 """
 
 from __future__ import annotations
@@ -21,6 +26,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
+from core import crypto as crypto_mod
 from core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -127,16 +133,24 @@ def run_backup(project: dict) -> BackupResult:
     sql_path = _to_sql(dest, slug)
     size_sql = sql_path.stat().st_size if sql_path is not None else 0.0
 
+    try:
+        dest_enc = _encrypt_and_remove(dest)
+        sql_enc = _encrypt_and_remove(sql_path) if sql_path is not None else None
+    except Exception as exc:
+        msg = f"No se pudo cifrar el backup en disco: {exc}"
+        logger.error("Backup '%s': %s", slug, msg)
+        return BackupResult(ok=False, detalle=msg, duracion_seg=elapsed, exit_code=proc.returncode)
+
     removed = _apply_rotation(dest_dir, slug)
     logger.info("Backup '%s' completado en %.1fs (%.1f MB .dump, %.1f MB .sql, %s)",
-                slug, elapsed, size / 1e6, size_sql / 1e6, dest)
+                slug, elapsed, size / 1e6, size_sql / 1e6, dest_enc)
     return BackupResult(
         ok=True,
         detalle=detail or "Backup completado correctamente.",
         tamaño_archivo=size,
-        ruta_archivo=str(dest),
+        ruta_archivo=str(dest_enc),
         tamaño_sql=size_sql,
-        ruta_sql=str(sql_path) if sql_path is not None else None,
+        ruta_sql=str(sql_enc) if sql_enc is not None else None,
         duracion_seg=elapsed,
         exit_code=proc.returncode,
         archivos_eliminados=removed,
@@ -183,16 +197,29 @@ def _to_sql(dump_path: Path, slug: str) -> Path | None:
     return sql_path
 
 
+def _encrypt_and_remove(plain: Path) -> Path:
+    """Cifra un archivo de backup y borra su claro del disco.
+
+    Devuelve la ruta cifrada (`<nombre>.enc`). Si el cifrado falla, el
+    archivo en claro se conserva (para no perder el backup) y la excepción
+    se propaga; el llamador la convierte en fallo del backup.
+    """
+    enc = Path(f"{plain}.enc")
+    crypto_mod.encrypt_file(plain, enc)
+    plain.unlink(missing_ok=True)
+    return enc
+
+
 def _apply_rotation(dest_dir: Path, slug: str) -> list[str]:
     """Mantiene solo los últimos N backups por proyecto (configurable).
 
-    Ordena por mtime (los .dump se nombran con marca de tiempo) y borra los
-    más antiguos cuando se supera el límite. Cada .dump eliminado arrastra su
-    .sql pareja. Solo se invoca tras un éxito.
+    Ordena por mtime (los .dump.enc se nombran con marca de tiempo) y borra
+    los más antiguos cuando se supera el límite. Cada .dump.enc eliminado
+    arrastra su .sql.enc pareja. Solo se invoca tras un éxito.
     """
     keep: int = settings().backup_keep_count
     files = sorted(
-        [p for p in dest_dir.glob("*.dump") if p.is_file()],
+        [p for p in dest_dir.glob("*.dump.enc") if p.is_file()],
         key=lambda p: p.stat().st_mtime,
     )
     removed: list[str] = []
@@ -200,7 +227,8 @@ def _apply_rotation(dest_dir: Path, slug: str) -> list[str]:
         keep = 1
     while len(files) > keep:
         oldest = files.pop(0)
-        for path in (oldest, oldest.with_suffix(".sql")):
+        stem = oldest.name[: -len(".dump.enc")]
+        for path in (oldest, oldest.with_name(stem + ".sql.enc")):
             try:
                 path.unlink(missing_ok=True)
             except OSError as exc:

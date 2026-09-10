@@ -25,7 +25,7 @@ async def send_message(bot: Bot, chat_id: int, text: str) -> bool:
 
 
 async def send_document(bot: Bot, chat_id: int, file_path: str, caption: str = "") -> bool:
-    """Envía un archivo. Devuelve True si se entregó."""
+    """Envía un archivo desde el disco. Devuelve True si se entregó."""
     try:
         from pathlib import Path
         with open(file_path, "rb") as f:
@@ -34,6 +34,23 @@ async def send_document(bot: Bot, chat_id: int, file_path: str, caption: str = "
                 document=f,
                 caption=caption,
             )
+        return True
+    except Exception as exc:  # noqa: BLE001 - notificar sin tumbar el flujo
+        logger.error("No se pudo enviar archivo a chat %s: %s", chat_id, exc)
+        return False
+
+
+async def send_document_bytes(bot: Bot, chat_id: int, filename: str, data: bytes, caption: str = "") -> bool:
+    """Envía unos bytes como documento sin tocar el disco (los backups se
+    descifran en memoria antes de enviarse). Devuelve True si se entregó."""
+    import io
+    try:
+        await bot.send_document(
+            chat_id=chat_id,
+            document=io.BytesIO(data),
+            filename=filename,
+            caption=caption,
+        )
         return True
     except Exception as exc:  # noqa: BLE001 - notificar sin tumbar el flujo
         logger.error("No se pudo enviar archivo a chat %s: %s", chat_id, exc)

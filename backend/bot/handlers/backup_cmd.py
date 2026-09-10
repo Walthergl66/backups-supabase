@@ -45,8 +45,20 @@ async def _send_document_or_warn(
             "supera el límite de 50 MB de Telegram; se omite el envío.",
         )
         return
-    await notify_mod.send_document(
-        context.bot, chat_id, ruta,
+    from pathlib import Path
+    from core import crypto as crypto_mod
+
+    try:
+        data = crypto_mod.decrypt_file_bytes(Path(ruta))
+    except Exception as exc:  # noqa: BLE001
+        await notify_mod.send_message(
+            context.bot, chat_id,
+            f"⚠️ No se pudo descifrar el {label} de {project_slug}: {exc}",
+        )
+        return
+    nombre = Path(ruta).name[: -len(".enc")] if ruta.endswith(".enc") else Path(ruta).name
+    await notify_mod.send_document_bytes(
+        context.bot, chat_id, nombre, data,
         caption=f"Backup {label} de {project_slug} ({_fmt_size(size)})",
     )
 
