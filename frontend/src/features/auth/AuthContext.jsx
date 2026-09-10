@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import { api, clearToken, getToken, setToken } from './api.js'
+import { clearToken, getToken, setToken } from '../../services/http.js'
+import * as authService from '../../services/auth.js'
 
 const AuthContext = createContext(null)
 
@@ -9,15 +10,15 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     if (!getToken()) return
-    api
-      .get('/api/auth/me')
-      .then((u) => setUser(u))
+    authService
+      .me()
+      .then(setUser)
       .catch(() => clearToken())
       .finally(() => setLoading(false))
   }, [])
 
   const login = async (username, password) => {
-    const data = await api.post('/api/auth/login', { username, password })
+    const data = await authService.login(username, password)
     setToken(data.access_token)
     setUser(data.user)
     return data.user
