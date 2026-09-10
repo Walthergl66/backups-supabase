@@ -46,7 +46,7 @@ export default function WebUserForm() {
 
   return (
     <>
-      <PageHead title={editing ? 'Editar usuario web' : 'Nuevo usuario web'} sub="Los viewers solo pueden consultar; los admins pueden administrar." />
+      <PageHead title={editing ? 'Editar usuario web' : 'Nuevo usuario web'} sub="Roles: administrar todo o solo consultar." />
 
       {error && <Flash type="err">{error}</Flash>}
 
@@ -54,7 +54,7 @@ export default function WebUserForm() {
         <div className="card-body">
           <form onSubmit={submit}>
             <div className="field">
-              <label className="label">Usuario</label>
+              <label className="label">Nombre de usuario</label>
               <input className="input" value={form.username} onChange={set('username')} required autoComplete="off" />
             </div>
             <div className="field">
@@ -64,7 +64,7 @@ export default function WebUserForm() {
               <div className="hint">{editing ? 'Vacía para no cambiarla.' : ''}</div>
             </div>
             <div className="field">
-              <label className="label">Rol</label>
+              <label className="label">Rol de acceso</label>
               <select className="select" value={form.rol} onChange={set('rol')}>
                 <option value="admin">admin</option>
                 <option value="viewer">viewer</option>
@@ -73,7 +73,7 @@ export default function WebUserForm() {
             <div className="field">
               <label className="check">
                 <input type="checkbox" checked={form.activo} onChange={setChk('activo')} />
-                Activo
+                Cuenta activa
               </label>
             </div>
             <div className="inline-actions">

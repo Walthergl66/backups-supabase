@@ -70,7 +70,7 @@ export default function ImportProjects() {
 
   return (
     <>
-      <PageHead title="Importar proyectos" sub="Trae proyectos de Supabase y en el mismo paso registra al usuario de Telegram que los operará." />
+      <PageHead title="Importar proyectos" sub="Importa tus proyectos de Supabase y registra quién los operará desde Telegram." />
 
       {error && <Flash type="err">{error}</Flash>}
 
