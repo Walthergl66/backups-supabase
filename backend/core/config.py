@@ -28,6 +28,8 @@ class Settings:
 
         self.encryption_key: str = self._required("ENCRYPTION_KEY")
 
+        self.backup_encryption_key: str = self._required("BACKUP_ENCRYPTION_KEY")
+
         self.web_admin_username: str = os.getenv("WEB_ADMIN_USERNAME", "admin")
         self.web_admin_password: str = os.getenv("WEB_ADMIN_PASSWORD", "")
 
