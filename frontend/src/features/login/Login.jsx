@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../auth.jsx'
-import { ApiError } from '../api.js'
+import { useAuth } from '../auth/AuthContext.jsx'
+import { ApiError } from '../../services/http.js'
+import Flash from '../../components/ui/Flash.jsx'
 
 export default function Login() {
   const { login } = useAuth()
@@ -34,7 +35,7 @@ export default function Login() {
         <h1 style={{ margin: '0 0 4px', fontSize: 20 }}>Supabase Backups</h1>
         <p className="muted" style={{ marginTop: 0, fontSize: 13 }}>Ingresa con tu usuario de la interfaz web.</p>
 
-        {error && <div className="flash flash-err">{error}</div>}
+        {error && <Flash type="err">{error}</Flash>}
 
         <form onSubmit={submit}>
           <div className="field">
