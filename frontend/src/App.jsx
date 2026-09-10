@@ -40,6 +40,7 @@ export default function App() {
         <Route path="/proyectos/:id/editar" element={<ProjectForm />} />
         <Route path="/proyectos/:id/historial" element={<ProjectHistory />} />
         <Route path="/cuentas" element={<Accounts />} />
+        <Route path="/cuentas/nueva" element={<AccountForm />} />
         <Route path="/cuentas/:id/editar" element={<AccountForm />} />
         <Route path="/usuarios" element={<Users />} />
         <Route path="/usuarios/nuevo" element={<UserForm />} />
