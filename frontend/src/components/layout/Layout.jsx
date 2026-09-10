@@ -21,19 +21,19 @@ const groups = [
       { to: '/proyectos', label: 'Proyectos', icon: icons.projects },
       { to: '/cuentas', label: 'Cuentas', icon: icons.accounts },
       { to: '/backups', label: 'Backups', icon: icons.backups },
-      { to: '/importar', label: 'Importar proyectos', icon: icons.import },
+      { to: '/importar', label: 'Importar desde Supabase', icon: icons.import },
     ],
   },
   {
     group: 'Acceso',
     items: [
-      { to: '/usuarios', label: 'Usuarios Telegram', icon: icons.tg },
-      { to: '/usuarios-web', label: 'Usuarios Web', icon: icons.web },
+      { to: '/usuarios', label: 'Usuarios de Telegram', icon: icons.tg },
+      { to: '/usuarios-web', label: 'Usuarios del panel', icon: icons.web },
     ],
   },
   {
     group: 'Registro',
-    items: [{ to: '/auditoria', label: 'Auditoría', icon: icons.audit }],
+    items: [{ to: '/auditoria', label: 'Bitácora', icon: icons.audit }],
   },
 ]
 
@@ -76,7 +76,7 @@ export default function Layout() {
           ))}
         </nav>
 
-        <div className="sidebar-foot">v1.0 · API REST</div>
+        <div className="sidebar-foot">Supabase Backups · v1.0</div>
       </aside>
 
       <div
@@ -91,7 +91,7 @@ export default function Layout() {
           </button>
           <div className="user">
             {user && <span className="user-name muted" style={{ fontSize: 13 }}>{user.username}</span>}
-            {user && <span className={`chip ${user.rol === 'admin' ? 'chip-admin' : 'chip-viewer'}`}>{user.rol}</span>}
+            {user && <span className={`chip ${user.rol === 'admin' ? 'chip-admin' : 'chip-viewer'}`}>{user.rol === 'admin' ? 'Administrador' : 'Solo lectura'}</span>}
             <button className="btn btn-ghost btn-sm" onClick={logout}>
               Salir
             </button>
