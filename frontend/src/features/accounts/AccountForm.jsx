@@ -44,7 +44,7 @@ export default function AccountForm() {
 
   return (
     <>
-      <PageHead title={editing ? 'Editar cuenta' : 'Nueva cuenta'} sub="El token se cifra antes de guardarse." />
+      <PageHead title={editing ? 'Editar cuenta' : 'Nueva cuenta'} sub="Agrega una cuenta de Supabase; su token se guarda cifrado." />
 
       {error && <Flash type="err">{error}</Flash>}
 
@@ -52,7 +52,7 @@ export default function AccountForm() {
         <div className="card-body">
           <form onSubmit={submit}>
             <div className="field">
-              <label className="label">Nombre</label>
+              <label className="label">Nombre de la cuenta</label>
               <input className="input" value={form.nombre} onChange={set('nombre')} required />
             </div>
             <div className="field">

@@ -96,25 +96,25 @@ export default function ProjectForm() {
                 </select>
               </div>
               <div className="field">
-                <label className="label">Project ref</label>
+                <label className="label">Referencia del proyecto (ref)</label>
                 <input className="input mono" value={form.project_ref} onChange={set('project_ref')} placeholder="xxxxxxxxxxxxxxxxxxxx" required />
-                <div className="hint">Identificador del proyecto (parte del host).</div>
+                <div className="hint">Código del proyecto. Aparece en la URL de tu dashboard de Supabase.</div>
               </div>
             </div>
 
             <div className="field">
-              <label className="label">Cadena de conexión (PostgreSQL)</label>
+              <label className="label">Conexión de la base de datos</label>
               <input className="input mono" type="text" value={form.connection} onChange={set('connection')}
                 placeholder="postgresql://postgres:[PASSWORD]@db.xxxx.supabase.co:5432/postgres" required={!editing} />
               <div className="hint">
-                {editing ? 'Si la dejas vacía se conserva la actual (cifrada en la base).' : 'Se cifra antes de guardar.'}
+                {editing ? 'Si la dejas vacía se conserva la actual (guardada cifrada).' : 'Se guarda cifrada al almacenarla.'}
               </div>
             </div>
 
             <div className="field">
               <label className="check">
                 <input type="checkbox" checked={form.activo} onChange={setChk('activo')} />
-                Activo (permitir respaldos)
+                Activo: permitir respaldos programados
               </label>
             </div>
 
