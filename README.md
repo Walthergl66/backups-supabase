@@ -29,7 +29,9 @@ y la misma base SQLite.
 │   ├── core/                   # config, conexión a BD, cifrado, JWT
 │   ├── services/               # capa de datos desacoplada (persistencia única)
 │   ├── backup/                 # ejecutor de pg_dump + comprobaciones de estado
-│   ├── bot/                    # comandos de Telegram y validaciones
+│   ├── bot/                    # aplicación del bot: application.py + handlers/ por dominio
+│   │   ├── application.py      # wiring de handlers y polling
+│   │   └── handlers/           # basics, backup_cmd, status_cmd, register, addbd, misc
 │   ├── notify/                 # canal de notificación (Telegram)
 │   ├── admin_web/              # FastAPI: auth JWT + rutas REST en /api
 │   ├── .env                    # credenciales (ver backend/.env.example)

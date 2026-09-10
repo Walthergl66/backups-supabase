@@ -7,7 +7,6 @@ respetando el límite de 50 MB de la Bot API de Telegram.
 from __future__ import annotations
 
 import asyncio
-import logging
 
 from telegram import Update
 from telegram.ext import ContextTypes
@@ -24,8 +23,6 @@ from services import audit as audit_srv
 from services import backup_history as history_srv
 from services import projects as projects_srv
 from services import users as users_srv
-
-logger = logging.getLogger(__name__)
 
 TELEGRAM_FILE_LIMIT = 50 * 1024 * 1024
 
