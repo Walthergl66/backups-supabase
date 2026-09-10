@@ -25,12 +25,13 @@ def connect() -> sqlite3.Connection:
 
 
 def init_db() -> None:
-    """Crea los directorios y ejecuta el esquema si aún no existe la base."""
+    """Crea los directorios y ejecuta el esquema solo si la base aún no existe."""
     db_path: Path = settings().db_path
     db_path.parent.mkdir(parents=True, exist_ok=True)
-    schema = Path(__file__).resolve().parent.parent / "db" / "schema.sql"
-    with connect() as conn:
-        conn.executescript(schema.read_text(encoding="utf-8"))
+    if not db_path.exists() or db_path.stat().st_size == 0:
+        schema = Path(__file__).resolve().parent.parent / "db" / "schema.sql"
+        with connect() as conn:
+            conn.executescript(schema.read_text(encoding="utf-8"))
     _migrate()
 
 
