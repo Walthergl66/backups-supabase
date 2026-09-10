@@ -44,7 +44,7 @@ export default function Users() {
                   <td style={{ fontWeight: 600 }}>{u.nombre}</td>
                   <td className="mono">{u.telegram_chat_id}</td>
                   <td>
-                    <span className={`chip ${u.rol === 'admin' ? 'chip-admin' : 'chip-viewer'}`}>{u.rol}</span>
+                    <span className={`chip ${u.rol === 'admin' ? 'chip-admin' : 'chip-viewer'}`}>{u.rol === 'admin' ? 'Administrador' : 'Solo lectura'}</span>
                   </td>
                   <td className="muted" style={{ fontSize: 12 }}>{u.proyectos_puede || (u.es_admin ? 'Todos' : '—')}</td>
                   <td className="td-actions">

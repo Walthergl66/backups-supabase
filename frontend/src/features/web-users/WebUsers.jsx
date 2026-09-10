@@ -47,7 +47,7 @@ export default function WebUsers() {
                     <div className="muted" style={{ fontSize: 11 }}>id {u.id}</div>
                   </td>
                   <td>
-                    <span className={`chip ${u.rol === 'admin' ? 'chip-admin' : 'chip-viewer'}`}>{u.rol}</span>
+                    <span className={`chip ${u.rol === 'admin' ? 'chip-admin' : 'chip-viewer'}`}>{u.rol === 'admin' ? 'Administrador' : 'Solo lectura'}</span>
                   </td>
                   <td>{u.activo ? <Badge tone="ok">Activo</Badge> : <Badge tone="mid">Inactivo</Badge>}</td>
                   <td className="muted">{new Date(u.created_at).toLocaleDateString('es')}</td>
