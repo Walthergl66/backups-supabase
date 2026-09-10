@@ -95,8 +95,8 @@ El panel queda disponible en `http://localhost:8080`.
   los proyectos y en el mismo paso registra tu **usuario de Telegram**
   (nombre + `chat_id`). Al confirmar se crea la cuenta, los proyectos y el
   usuario con permisos sobre los proyectos importados.
-  - ¿Cómo saber tu `chat_id`? Envía cualquier mensaje a tu bot y revisa los
-    logs: se registra al intentar usarlo.
+  - ¿Cómo saber tu `chat_id`? Márcale `/id` al bot en Telegram y te lo responde
+    en el propio chat (alternativa a los logs).
   - Si prefieres, puedes crear cuentas y proyectos manualmente (CRUD en
     *Cuentas* / *Proyectos*) y registrar usuarios desde *Usuarios Telegram*.
     El rol `admin` de Telegram tiene permisos totales; los roles `usuario`
@@ -129,6 +129,7 @@ Los iconos del PWA se regeneran con `node scripts/generate-icons.mjs`.
 
 | Comando | Descripción |
 |---|---|
+| `/id` | Devuelve tu `chat_id` en el chat (sirve para darte de alta sin revisar logs) |
 | `/proyectos` | Lista los proyectos activos con su último backup |
 | `/backup <slug>` | Dispara un backup bajo demanda (formato `pg_dump -Fc`) |
 | `/status <slug>` | Comprueba conexión a la base y estado vía Management API |

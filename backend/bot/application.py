@@ -35,6 +35,7 @@ def build_application() -> Application:
     app.add_handler(CommandHandler("backup", backup_cmd._cmd_backup))
     app.add_handler(CommandHandler("status", status_cmd._cmd_status))
     app.add_handler(CommandHandler("historial", status_cmd._cmd_historial))
+    app.add_handler(CommandHandler("id", misc._cmd_id))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, misc._on_other))
     return app
 

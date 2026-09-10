@@ -25,6 +25,7 @@ async def _cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         "Comandos disponibles:\n"
         "{pat_info}"
         "{addbd_info}"
+        "/id - obtener tu chat_id\n"
         "/proyectos - proyectos activos conectados\n"
         "/backup <slug> - respaldo bajo demanda de un proyecto\n"
         "/status <slug> - estado del proyecto (DB y Management API)\n"

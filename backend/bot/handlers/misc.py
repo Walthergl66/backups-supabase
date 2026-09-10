@@ -23,6 +23,18 @@ async def _cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return ConversationHandler.END
 
 
+async def _cmd_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Devuelve el chat_id del usuario en el propio chat.
+
+    Funciona también para chats no registrados: es la forma de obtener tu
+    chat_id para darlo de alta desde la web sin necesidad de revisar logs.
+    """
+    chat_id = update.effective_chat.id
+    await notify_mod.send_message(
+        context.bot, chat_id, f"Tu chat ID es: {chat_id}"
+    )
+
+
 async def _on_other(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Mensajes que no son comandos: registro el chat_id para poder dar de
     alta al usuario desde la interfaz web, sin revelar nada en el chat."""
