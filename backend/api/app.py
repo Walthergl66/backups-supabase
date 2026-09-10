@@ -12,8 +12,9 @@ from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 
 from api import deps
-from api.rate_limit import limiter
+from api.rate_limit import _client_address, limiter, should_notify_rate_limit
 from api.routes import accounts, audit, auth, backups, import_projects, projects, users, web_users
+from notify import telegram as notify_mod
 from services import audit as audit_srv
 from services import projects as projects_srv
 from services import web_users as web_users_srv
@@ -47,6 +48,12 @@ def create_app() -> FastAPI:
     app.state.limiter = limiter
 
     async def _rate_limit_handler(request, exc: RateLimitExceeded):
+        if should_notify_rate_limit():
+            ip = _client_address(request)
+            await notify_mod.notify_admins(
+                f"🚨 Posible ataque de fuerza bruta al panel: se superó el límite "
+                f"de intentos de login (HTTP 429) desde la IP {ip}."
+            )
         return JSONResponse(
             {"detail": "Demasiados intentos. Espera un momento e inténtalo de nuevo."},
             status_code=429,
