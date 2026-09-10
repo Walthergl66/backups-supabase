@@ -1,27 +1,20 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
-import Layout from './components/Layout.jsx'
-import { useAuth } from './auth.jsx'
-import Login from './pages/Login.jsx'
-import Dashboard from './pages/Dashboard.jsx'
-import Projects from './pages/Projects.jsx'
-import ProjectForm from './pages/ProjectForm.jsx'
-import ProjectHistory from './pages/ProjectHistory.jsx'
-import Accounts from './pages/Accounts.jsx'
-import AccountForm from './pages/AccountForm.jsx'
-import Users from './pages/Users.jsx'
-import UserForm from './pages/UserForm.jsx'
-import WebUsers from './pages/WebUsers.jsx'
-import WebUserForm from './pages/WebUserForm.jsx'
-import Backups from './pages/Backups.jsx'
-import Audit from './pages/Audit.jsx'
-import ImportProjects from './pages/ImportProjects.jsx'
-
-function RequireAuth({ children }) {
-  const { user, loading } = useAuth()
-  if (loading) return <div className="main"><div className="muted">Cargando…</div></div>
-  if (!user) return <Navigate to="/login" replace />
-  return children
-}
+import Layout from './components/layout/Layout.jsx'
+import RequireAuth from './components/ui/RequireAuth.jsx'
+import Login from './features/login/Login.jsx'
+import Dashboard from './features/dashboard/Dashboard.jsx'
+import Projects from './features/projects/Projects.jsx'
+import ProjectForm from './features/projects/ProjectForm.jsx'
+import ProjectHistory from './features/projects/ProjectHistory.jsx'
+import Accounts from './features/accounts/Accounts.jsx'
+import AccountForm from './features/accounts/AccountForm.jsx'
+import Users from './features/users/Users.jsx'
+import UserForm from './features/users/UserForm.jsx'
+import WebUsers from './features/web-users/WebUsers.jsx'
+import WebUserForm from './features/web-users/WebUserForm.jsx'
+import Backups from './features/backups/Backups.jsx'
+import Audit from './features/audit/Audit.jsx'
+import ImportProjects from './features/imports/ImportProjects.jsx'
 
 export default function App() {
   return (
