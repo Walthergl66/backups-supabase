@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { api, ApiError } from '../api.js'
+import { createProject, getProject, updateProject } from '../../services/projects.js'
+import { listAccounts } from '../../services/accounts.js'
+import { ApiError } from '../../services/http.js'
+import PageHead from '../../components/ui/PageHead.jsx'
+import Flash from '../../components/ui/Flash.jsx'
 
 export default function ProjectForm() {
   const { id } = useParams()
@@ -15,13 +19,12 @@ export default function ProjectForm() {
   const [sending, setSending] = useState(false)
 
   useEffect(() => {
-    api.get('/api/accounts').then(setAccounts).catch((e) => setError(e.message))
+    listAccounts().then(setAccounts).catch((e) => setError(e.message))
   }, [])
 
   useEffect(() => {
     if (!id) return
-    api
-      .get(`/api/projects/${id}`)
+    getProject(id)
       .then((p) => {
         setForm({
           slug: p.slug || '',
@@ -52,9 +55,9 @@ export default function ProjectForm() {
     }
     try {
       if (editing) {
-        await api.put(`/api/projects/${id}`, payload)
+        await updateProject(id, payload)
       } else {
-        await api.post('/api/projects', payload)
+        await createProject(payload)
       }
       navigate('/proyectos')
     } catch (err) {
@@ -66,14 +69,9 @@ export default function ProjectForm() {
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1 className="h1">{editing ? 'Editar proyecto' : 'Nuevo proyecto'}</h1>
-          <p className="sub">Configura un proyecto de Supabase para su respaldo automático.</p>
-        </div>
-      </div>
+      <PageHead title={editing ? 'Editar proyecto' : 'Nuevo proyecto'} sub="Configura un proyecto de Supabase para su respaldo automático." />
 
-      {error && <div className="flash flash-err">{error}</div>}
+      {error && <Flash type="err">{error}</Flash>}
 
       <div className="card">
         <div className="card-body">

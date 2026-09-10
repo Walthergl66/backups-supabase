@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { api, fmtBytes } from '../api.js'
+import { getProjectHistory } from '../../services/projects.js'
+import { fmtBytes } from '../../utils/format.js'
+import PageHead from '../../components/ui/PageHead.jsx'
+import Flash from '../../components/ui/Flash.jsx'
+import Badge from '../../components/ui/Badge.jsx'
 
 export default function ProjectHistory() {
   const { id } = useParams()
@@ -8,25 +12,20 @@ export default function ProjectHistory() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    api
-      .get(`/api/projects/${id}/history`)
+    getProjectHistory(id)
       .then(setData)
       .catch((e) => setError(e.message))
   }, [id])
 
-  if (error) return <div className="flash flash-err">{error}</div>
+  if (error) return <Flash type="err">{error}</Flash>
   if (!data) return <div className="muted">Cargando…</div>
 
   const p = data.project
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1 className="h1">{p.nombre}</h1>
-          <p className="sub mono">{p.slug} · cuenta {p.account_nombre}</p>
-        </div>
+      <PageHead title={p.nombre} sub={`${p.slug} · cuenta ${p.account_nombre}`} subClass="mono">
         <Link className="btn btn-ghost" to="/proyectos">Volver a proyectos</Link>
-      </div>
+      </PageHead>
 
       <div className="grid grid-stat">
         <div className="card stat">
@@ -52,9 +51,9 @@ export default function ProjectHistory() {
                   <td className="muted">{new Date(r.fecha).toLocaleString('es')}</td>
                   <td>
                     {r.resultado === 'ok' ? (
-                      <span className="badge badge-ok">OK</span>
+                      <Badge tone="ok">OK</Badge>
                     ) : (
-                      <span className="badge badge-err">Error</span>
+                      <Badge tone="err">Error</Badge>
                     )}
                   </td>
                   <td className="mono">{fmtBytes(r.tamaño_archivo)}</td>

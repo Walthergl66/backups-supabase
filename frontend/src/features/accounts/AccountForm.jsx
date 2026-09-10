@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { api, ApiError } from '../api.js'
+import { createAccount, getAccount, updateAccount } from '../../services/accounts.js'
+import { ApiError } from '../../services/http.js'
+import PageHead from '../../components/ui/PageHead.jsx'
+import Flash from '../../components/ui/Flash.jsx'
 
 export default function AccountForm() {
   const { id } = useParams()
@@ -13,8 +16,7 @@ export default function AccountForm() {
 
   useEffect(() => {
     if (!id) return
-    api
-      .get(`/api/accounts/${id}`)
+    getAccount(id)
       .then((a) => setForm({ nombre: a.nombre, pat: '' }))
       .catch((e) => setError(e.message))
   }, [id])
@@ -28,9 +30,9 @@ export default function AccountForm() {
     const payload = { nombre: form.nombre, pat: form.pat }
     try {
       if (editing) {
-        await api.put(`/api/accounts/${id}`, payload)
+        await updateAccount(id, payload)
       } else {
-        await api.post('/api/accounts', payload)
+        await createAccount(payload)
       }
       navigate('/cuentas')
     } catch (err) {
@@ -42,14 +44,9 @@ export default function AccountForm() {
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1 className="h1">{editing ? 'Editar cuenta' : 'Nueva cuenta'}</h1>
-          <p className="sub">El token se cifra antes de guardarse.</p>
-        </div>
-      </div>
+      <PageHead title={editing ? 'Editar cuenta' : 'Nueva cuenta'} sub="El token se cifra antes de guardarse." />
 
-      {error && <div className="flash flash-err">{error}</div>}
+      {error && <Flash type="err">{error}</Flash>}
 
       <div className="card" style={{ maxWidth: 560 }}>
         <div className="card-body">

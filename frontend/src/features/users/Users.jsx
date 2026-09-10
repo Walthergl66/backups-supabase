@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api } from '../api.js'
+import { deleteUser, listUsers } from '../../services/users.js'
+import PageHead from '../../components/ui/PageHead.jsx'
+import Flash from '../../components/ui/Flash.jsx'
 
 export default function Users() {
   const [users, setUsers] = useState([])
   const [error, setError] = useState('')
 
-  const load = () => api.get('/api/users').then(setUsers).catch((e) => setError(e.message))
+  const load = () => listUsers().then(setUsers).catch((e) => setError(e.message))
 
   useEffect(() => {
     load()
@@ -15,7 +17,7 @@ export default function Users() {
   const del = async (u) => {
     if (!window.confirm(`¿Eliminar al usuario de Telegram "${u.nombre}"?`)) return
     try {
-      await api.del(`/api/users/${u.id}`)
+      await deleteUser(u.id)
       load()
     } catch (e) {
       setError(e.message)
@@ -24,15 +26,11 @@ export default function Users() {
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1 className="h1">Usuarios de Telegram</h1>
-          <p className="sub">Usuarios autorizados para usar el bot de respaldo.</p>
-        </div>
+      <PageHead title="Usuarios de Telegram" sub="Usuarios autorizados para usar el bot de respaldo.">
         <Link className="btn btn-primary" to="/usuarios/nuevo">Nuevo usuario</Link>
-      </div>
+      </PageHead>
 
-      {error && <div className="flash flash-err">{error}</div>}
+      {error && <Flash type="err">{error}</Flash>}
 
       <div className="card">
         <div className="table-scroll">
