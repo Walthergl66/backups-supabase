@@ -36,7 +36,7 @@ export default function Users() {
         <div className="table-scroll">
           <table className="t">
             <thead>
-              <tr><th>Nombre</th><th>Chat ID</th><th>Rol</th><th>Acceso</th><th className="td-actions">Acciones</th></tr>
+              <tr><th>Nombre</th><th>Chat</th><th>Rol</th><th>Acceso</th><th className="td-actions">Acciones</th></tr>
             </thead>
             <tbody>
               {users.map((u) => (

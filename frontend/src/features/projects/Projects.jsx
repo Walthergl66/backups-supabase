@@ -62,10 +62,10 @@ export default function Projects() {
           <table className="t">
             <thead>
               <tr>
-                <th>Slug</th>
+                <th>Identificador</th>
                 <th>Nombre</th>
                 <th>Cuenta</th>
-                <th>Ref</th>
+                <th>Código</th>
                 <th>Estado</th>
                 <th className="td-actions">Acciones</th>
               </tr>

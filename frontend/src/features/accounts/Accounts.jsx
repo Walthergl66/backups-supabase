@@ -37,7 +37,7 @@ export default function Accounts() {
         <div className="table-scroll">
           <table className="t">
             <thead>
-              <tr><th>Nombre</th><th>PAT</th><th>Estado</th><th>Creada</th><th className="td-actions">Acciones</th></tr>
+              <tr><th>Nombre</th><th>Token</th><th>Estado</th><th>Creada</th><th className="td-actions">Acciones</th></tr>
             </thead>
             <tbody>
               {accounts.map((a) => (
