@@ -194,10 +194,13 @@ async def _cmd_backup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     result = await asyncio.to_thread(backup_runner.run_backup, full_project)
 
     if result.ok:
+        size_sql = result.tamaño_sql or 0.0
+        sql_note = f"\n• SQL: {_fmt_size(size_sql)}" if result.ruta_sql else "\n• SQL: no disponible"
         detail = (
             f"Backup completado\n"
             f"• Proyecto: {project['slug']}\n"
-            f"• Tamaño: {_fmt_size(result.tamaño_archivo)}\n"
+            f"• Formato .dump: {_fmt_size(result.tamaño_archivo)}"
+            f"{sql_note}\n"
             f"• Duración: {result.duracion_seg:.1f}s"
         )
         if result.archivos_eliminados:
@@ -211,10 +214,35 @@ async def _cmd_backup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         audit_srv.log_action("bot_backup", "ok", user_id=user["id"], project_id=project["id"],
                              detalle=result.detalle)
         await notify_mod.send_message(context.bot, chat_id, detail)
-        await notify_mod.send_document(
-            context.bot, chat_id, result.ruta_archivo,
-            caption=f"Backup de {project['slug']}"
-        )
+
+        telegram_limit = 50 * 1024 * 1024
+
+        def _too_big(size: float | None) -> bool:
+            return size is not None and size > telegram_limit
+
+        if result.ruta_sql:
+            if _too_big(result.tamaño_sql):
+                await notify_mod.send_message(
+                    context.bot, chat_id,
+                    f"⚠️ El .sql de {project['slug']} ({_fmt_size(result.tamaño_sql)}) "
+                    "supera el límite de 50 MB de Telegram; se omite el envío."
+                )
+            else:
+                await notify_mod.send_document(
+                    context.bot, chat_id, result.ruta_sql,
+                    caption=f"Backup SQL de {project['slug']} ({_fmt_size(result.tamaño_sql)})"
+                )
+        if _too_big(result.tamaño_archivo):
+            await notify_mod.send_message(
+                context.bot, chat_id,
+                f"⚠️ El .dump de {project['slug']} ({_fmt_size(result.tamaño_archivo)}) "
+                "supera el límite de 50 MB de Telegram; se omite el envío."
+            )
+        else:
+            await notify_mod.send_document(
+                context.bot, chat_id, result.ruta_archivo,
+                caption=f"Backup .dump de {project['slug']} ({_fmt_size(result.tamaño_archivo)})"
+            )
     else:
         detail = f"Backup fallido\n• Proyecto: {project['slug']}\n• Motivo: {result.detalle}"
         history_srv.record(project["id"], "error", detalle=result.detalle)

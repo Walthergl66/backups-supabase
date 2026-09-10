@@ -3,6 +3,13 @@
 No usa scripts bash ni PowerShell: invoca `pg_dump` directamente vía
 subprocess con `shell=False` y rutas gestionadas con `pathlib`, para que
 el comportamiento sea idéntico en Linux, macOS y Windows.
+
+Cada backup produce DOS archivos por proyecto:
+  - `.dump`: formato custom (-Fc) comprimido, para restauración con
+    `pg_restore` o `pg_restore -f out.sql`.
+  - `.sql`: texto plano equivalente, generado con `pg_restore --file`
+    (conversión local sin conexión a la BD), ideal para inspección o para
+    restaurar con `psql`.
 """
 
 from __future__ import annotations
@@ -25,6 +32,8 @@ class BackupResult:
     detalle: str = ""
     tamaño_archivo: float | None = None
     ruta_archivo: str | None = None
+    tamaño_sql: float | None = None
+    ruta_sql: str | None = None
     duracion_seg: float = 0.0
     exit_code: int | None = None
     archivos_eliminados: list[str] = field(default_factory=list)
@@ -32,6 +41,10 @@ class BackupResult:
 
 def _pg_dump_binary() -> str:
     return "pg_dump"
+
+
+def _pg_restore_binary() -> str:
+    return "pg_restore"
 
 
 def backup_path_for(slug: str) -> tuple[Path, Path]:
@@ -111,24 +124,71 @@ def run_backup(project: dict) -> BackupResult:
         logger.error("Backup '%s': %s", slug, msg)
         return BackupResult(ok=False, detalle=msg, duracion_seg=elapsed, exit_code=proc.returncode)
 
+    sql_path = _to_sql(dest, slug)
+    size_sql = sql_path.stat().st_size if sql_path is not None else 0.0
+
     removed = _apply_rotation(dest_dir, slug)
-    logger.info("Backup '%s' completado en %.1fs (%.1f MB, %s)", slug, elapsed, size / 1e6, dest)
+    logger.info("Backup '%s' completado en %.1fs (%.1f MB .dump, %.1f MB .sql, %s)",
+                slug, elapsed, size / 1e6, size_sql / 1e6, dest)
     return BackupResult(
         ok=True,
         detalle=detail or "Backup completado correctamente.",
         tamaño_archivo=size,
         ruta_archivo=str(dest),
+        tamaño_sql=size_sql,
+        ruta_sql=str(sql_path) if sql_path is not None else None,
         duracion_seg=elapsed,
         exit_code=proc.returncode,
         archivos_eliminados=removed,
     )
 
 
+def _to_sql(dump_path: Path, slug: str) -> Path | None:
+    """Convierte el .dump (formato custom -Fc) a un .sql plano con pg_restore.
+
+    Es local (no necesita conexión a la BD) y falla de forma no fatal: si no
+    se puede generar el .sql, el backup se completa igual solo con el .dump.
+    """
+    sql_path = dump_path.with_suffix(".sql")
+    args = [
+        _pg_restore_binary(),
+        "--format=custom",
+        "--file", str(sql_path),
+        str(dump_path),
+    ]
+    try:
+        proc = subprocess.run(
+            args,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=settings().backup_timeout_seconds,
+            shell=False,
+            check=False,
+        )
+    except OSError as exc:
+        logger.warning("Conversión a SQL '%s' no disponible: %s", dump_path.name, exc)
+        sql_path.unlink(missing_ok=True)
+        return None
+
+    if proc.returncode != 0 or not sql_path.exists() or sql_path.stat().st_size <= 0:
+        tail = "\n".join((proc.stderr or "").splitlines()[-5:])
+        logger.warning("Conversión a SQL '%s' falló (exit %s): %s",
+                       dump_path.name, proc.returncode, tail or "(sin detalle)")
+        sql_path.unlink(missing_ok=True)
+        return None
+
+    logger.info("Convertido '%s' a SQL (%d bytes)", dump_path.name, sql_path.stat().st_size)
+    return sql_path
+
+
 def _apply_rotation(dest_dir: Path, slug: str) -> list[str]:
     """Mantiene solo los últimos N backups por proyecto (configurable).
 
     Ordena por mtime (los .dump se nombran con marca de tiempo) y borra los
-    más antiguos cuando se supera el límite. Solo se invoca tras un éxito.
+    más antiguos cuando se supera el límite. Cada .dump eliminado arrastra su
+    .sql pareja. Solo se invoca tras un éxito.
     """
     keep: int = settings().backup_keep_count
     files = sorted(
@@ -140,10 +200,11 @@ def _apply_rotation(dest_dir: Path, slug: str) -> list[str]:
         keep = 1
     while len(files) > keep:
         oldest = files.pop(0)
-        try:
-            oldest.unlink()
-            removed.append(oldest.name)
-            logger.info("Rotación '%s': eliminando backup antiguo %s", slug, oldest.name)
-        except OSError as exc:
-            logger.warning("Rotación '%s': no se pudo borrar %s: %s", slug, oldest.name, exc)
+        for path in (oldest, oldest.with_suffix(".sql")):
+            try:
+                path.unlink(missing_ok=True)
+            except OSError as exc:
+                logger.warning("Rotación '%s': no se pudo borrar %s: %s", slug, path.name, exc)
+        removed.append(oldest.name)
+        logger.info("Rotación '%s': eliminando backup antiguo %s", slug, oldest.name)
     return removed
