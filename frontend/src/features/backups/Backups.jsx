@@ -25,7 +25,7 @@ export default function Backups() {
         <div className="table-scroll">
           <table className="t">
             <thead>
-              <tr><th>Fecha</th><th>Proyecto</th><th>Resultado</th><th>Tamaño</th><th>Detalle</th></tr>
+              <tr><th>Fecha</th><th>Proyecto</th><th>Estado</th><th>Tamaño</th><th>Detalle</th></tr>
             </thead>
             <tbody>
               {(data.rows || []).map((r) => (

@@ -24,7 +24,7 @@ export default function Audit() {
         <div className="table-scroll">
           <table className="t">
             <thead>
-              <tr><th>Fecha</th><th>Origen</th><th>Acción</th><th>Resultado</th><th>Detalle</th></tr>
+              <tr><th>Fecha</th><th>Desde</th><th>Acción</th><th>Estado</th><th>Detalle</th></tr>
             </thead>
             <tbody>
               {rows.map((a) => (
