@@ -38,3 +38,24 @@ async def send_document(bot: Bot, chat_id: int, file_path: str, caption: str = "
     except Exception as exc:  # noqa: BLE001 - notificar sin tumbar el flujo
         logger.error("No se pudo enviar archivo a chat %s: %s", chat_id, exc)
         return False
+
+
+async def notify_admins(text: str) -> None:
+    """Envía una alerta de seguridad a los administradores de Telegram.
+
+    Usa el token del .env directamente (sin depender de la Application del bot)
+    para poder usarse desde cualquier parte del proceso.
+    """
+    from core.config import settings
+    from services import users as users_srv
+
+    admins = users_srv.list_admin_chat_ids()
+    if not admins:
+        logger.info("Alerta de seguridad sin destinatarios (no hay admins de Telegram): %s", text)
+        return
+    bot = Bot(token=settings().bot_token)
+    for chat_id in admins:
+        try:
+            await bot.send_message(chat_id=chat_id, text=text, disable_web_page_preview=True)
+        except Exception as exc:  # noqa: BLE001
+            logger.error("No se pudo notificar alerta al chat %s: %s", chat_id, exc)

@@ -44,6 +44,16 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    app.state.limiter = limiter
+
+    async def _rate_limit_handler(request, exc: RateLimitExceeded):
+        return JSONResponse(
+            {"detail": "Demasiados intentos. Espera un momento e inténtalo de nuevo."},
+            status_code=429,
+        )
+
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_handler)
+
     # Esquema de seguridad Bearer para el botón "Authorize" de Swagger.
     # Solo afecta a la documentación: la autenticación real la leen las deps.
     _setup_bearer_auth(app)
