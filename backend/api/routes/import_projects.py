@@ -7,6 +7,7 @@ import asyncio
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from api.deps import require_admin
+from core import sanitize
 from services import accounts as accounts_srv
 from services import audit as audit_srv
 from services import projects as projects_srv
@@ -26,7 +27,10 @@ async def fetch_projects(request: Request, admin: dict = Depends(require_admin))
     try:
         projects = await asyncio.to_thread(api_srv.list_projects, pat)
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=f"Error al consultar Supabase: {exc}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Error al consultar Supabase: {sanitize.redact_secrets(str(exc))}",
+        ) from exc
 
     existing_refs = {p["project_ref"] for p in projects_srv.list_projects(only_active=False)}
     available = [p for p in projects if p["ref"] not in existing_refs]
