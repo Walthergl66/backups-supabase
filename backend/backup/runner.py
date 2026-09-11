@@ -27,6 +27,7 @@ from datetime import datetime
 from pathlib import Path
 
 from core import crypto as crypto_mod
+from core import sanitize
 from core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -112,7 +113,7 @@ def run_backup(project: dict) -> BackupResult:
     elapsed = time.monotonic() - start
     size = dest.stat().st_size if dest.exists() else 0
 
-    detail = (proc.stderr or "").strip()
+    detail = sanitize.redact_secrets((proc.stderr or "").strip())
 
     if proc.returncode != 0:
         tail = detail.splitlines()

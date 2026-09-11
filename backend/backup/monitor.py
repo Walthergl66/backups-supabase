@@ -49,11 +49,13 @@ def check_supabase_api(project_ref: str, pat: str) -> tuple[bool, str]:
     try:
         resp = httpx.get(f"{SUPABASE_API}/v1/projects/{project_ref}/status", headers=headers, timeout=20)
     except httpx.HTTPError as exc:
-        return False, f"No se pudo contactar la Management API: {exc}"
+        return False, sanitize.redact_secrets(f"No se pudo contactar la Management API: {exc}")
     if resp.status_code == 200:
         data = resp.json()
         status = data.get("status", "desconocido")
         return True, f"Management API: proyecto {project_ref} -> {status}."
     if resp.status_code == 401 or resp.status_code == 403:
         return False, "Management API: el Personal Access Token no es válido o no tiene permisos."
-    return False, f"Management API respondió HTTP {resp.status_code}: {resp.text[:300]}"
+    return False, sanitize.redact_secrets(
+        f"Management API respondió HTTP {resp.status_code}: {resp.text[:300]}"
+    )
