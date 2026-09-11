@@ -34,7 +34,7 @@ services:
       backend:
         condition: service_healthy
     ports:
-      - "8080:8080"                   # SPA + proxy /api -> backend
+      - "127.0.0.1:8080:8080"           # solo loopback; el acceso remoto va por Tailscale ("tailscale serve")
     cap_drop:
       - ALL
     security_opt:
