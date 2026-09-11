@@ -11,13 +11,16 @@ import logging
 
 from telegram import Bot
 
+from core import sanitize
+
 logger = logging.getLogger(__name__)
 
 
 async def send_message(bot: Bot, chat_id: int, text: str) -> bool:
     """Envía un mensaje de texto. Devuelve True si se entregó."""
     try:
-        await bot.send_message(chat_id=chat_id, text=text, disable_web_page_preview=True)
+        await bot.send_message(chat_id=chat_id, text=sanitize.redact_secrets(text),
+                               disable_web_page_preview=True)
         return True
     except Exception as exc:  # noqa: BLE001 - notificar sin tumbar el flujo
         logger.error("No se pudo notificar al chat %s: %s", chat_id, exc)
@@ -73,6 +76,7 @@ async def notify_admins(text: str) -> None:
     bot = Bot(token=settings().bot_token)
     for chat_id in admins:
         try:
-            await bot.send_message(chat_id=chat_id, text=text, disable_web_page_preview=True)
+            await bot.send_message(chat_id=chat_id, text=sanitize.redact_secrets(text),
+                                   disable_web_page_preview=True)
         except Exception as exc:  # noqa: BLE001
             logger.error("No se pudo notificar alerta al chat %s: %s", chat_id, exc)

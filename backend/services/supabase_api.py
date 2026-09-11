@@ -11,6 +11,8 @@ import logging
 
 import httpx
 
+from core import sanitize
+
 logger = logging.getLogger(__name__)
 
 SUPABASE_API = "https://api.supabase.com"
@@ -25,7 +27,7 @@ def validate_pat(pat: str) -> tuple[bool, str]:
     try:
         resp = httpx.get(f"{SUPABASE_API}/v1/projects", headers=headers, timeout=15)
     except httpx.HTTPError as exc:
-        return False, f"No se pudo contactar la Management API: {exc}"
+        return False, sanitize.redact_secrets(f"No se pudo contactar la Management API: {exc}")
     if resp.status_code == 200:
         return True, "PAT válido."
     if resp.status_code in (401, 403):
@@ -67,7 +69,7 @@ def get_connection_string(pat: str, project_ref: str) -> str | None:
             timeout=15,
         )
     except httpx.HTTPError as exc:
-        logger.warning("Error al obtener connection string: %s", exc)
+        logger.warning("Error al obtener connection string: %s", sanitize.redact_secrets(str(exc)))
         return None
     if resp.status_code == 200:
         poolers = resp.json()

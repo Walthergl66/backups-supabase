@@ -188,7 +188,7 @@ def _to_sql(dump_path: Path, slug: str) -> Path | None:
         return None
 
     if proc.returncode != 0 or not sql_path.exists() or sql_path.stat().st_size <= 0:
-        tail = "\n".join((proc.stderr or "").splitlines()[-5:])
+        tail = sanitize.redact_secrets("\n".join((proc.stderr or "").splitlines()[-5:]))
         logger.warning("Conversión a SQL '%s' falló (exit %s): %s",
                        dump_path.name, proc.returncode, tail or "(sin detalle)")
         sql_path.unlink(missing_ok=True)
