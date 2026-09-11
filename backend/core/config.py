@@ -45,6 +45,11 @@ class Settings:
         self.jwt_ttl_seconds: int = self._int_env("JWT_TTL_MINUTES", 60) * 60
         self.refresh_ttl_seconds: int = self._int_env("REFRESH_TTL_DAYS", 7) * 24 * 3600
 
+        # Mini-WAF por IP (A5): corta ráfagas anómalas hacia /api/*.
+        self.throttle_max_requests: int = self._int_env("THROTTLE_MAX_REQUESTS", 120)
+        self.throttle_window_seconds: int = self._int_env("THROTTLE_WINDOW_SECONDS", 60)
+        self.throttle_block_seconds: int = self._int_env("THROTTLE_BLOCK_SECONDS", 120)
+
         self.web_admin_username: str = os.getenv("WEB_ADMIN_USERNAME", "admin")
         self.web_admin_password: str = os.getenv("WEB_ADMIN_PASSWORD", "")
 

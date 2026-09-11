@@ -13,6 +13,7 @@ from slowapi.errors import RateLimitExceeded
 
 from api import deps
 from api.rate_limit import _client_address, limiter, should_notify_rate_limit
+from api.throttle import should_notify_scan, throttle
 from api.routes import accounts, audit, auth, backups, import_projects, projects, users, web_users
 from core.config import settings
 from notify import telegram as notify_mod
@@ -62,6 +63,30 @@ def create_app() -> FastAPI:
         )
 
     app.add_exception_handler(RateLimitExceeded, _rate_limit_handler)
+
+    @app.middleware("http")
+    async def _throttle_middleware(request, call_next):
+        """Mini-WAF por IP: corta escaneos y ráfagas anómalas hacia /api/*."""
+        if request.url.path.startswith("/api/"):
+            ip = _client_address(request)
+            crossed = throttle.hit(ip)
+            if crossed:
+                if should_notify_scan():
+                    await notify_mod.notify_admins(
+                        f"🚨 Tráfico sospechoso hacia /api/*: se bloqueó "
+                        f"temporalmente la IP {ip} por superar el umbral "
+                        f"de peticiones."
+                    )
+                return JSONResponse(
+                    {"detail": "Demasiadas peticiones. Intenta de nuevo en unos segundos."},
+                    status_code=429,
+                )
+            if throttle.is_blocked(ip):
+                return JSONResponse(
+                    {"detail": "Demasiadas peticiones. Intenta de nuevo en unos segundos."},
+                    status_code=429,
+                )
+        return await call_next(request)
 
     # Esquema de seguridad Bearer para el botón "Authorize" de Swagger.
     # Solo afecta a la documentación: la autenticación real la leen las deps.

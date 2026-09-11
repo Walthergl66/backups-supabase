@@ -191,6 +191,9 @@ docker compose up -d             # volver a arrancar
 | `PBKDF2_ITERATIONS` | Iteraciones PBKDF2-SHA256 para contraseñas web (default 600000; migración automática al login) |
 | `JWT_TTL_MINUTES` | Vigencia del access token JWT web (default 60; se renueva con el refresh token) |
 | `REFRESH_TTL_DAYS` | Vigencia del refresh token en cookie HttpOnly (default 7; rotación en cada uso) |
+| `THROTTLE_MAX_REQUESTS` | Peticiones máximas hacia `/api/*` por IP antes de bloquear (default 120/ventana; mini-WAF A5) |
+| `THROTTLE_WINDOW_SECONDS` | Ventana del mini-WAF (default 60) |
+| `THROTTLE_BLOCK_SECONDS` | Duración del bloqueo por IP (default 120) |
 
 ## Notas
 
