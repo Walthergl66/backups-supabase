@@ -159,6 +159,9 @@ Toda acción queda registrada en `audit_log` y en el historial
   usarse en cualquier llamada de sistema.
 - La PWA solo guarda el token en `localStorage` del navegador; los datos nunca
   se cachean de forma offline (las llamadas `/api` siempre van a red).
+- Cada request revalida el JWT contra la base de datos: si el usuario fue
+  desactivado, eliminado o bloqueado, o su rol cambió, la sesión pierde
+  acceso al instante (no hace falta esperar a que expire el token).
 
 ## Gestión del sistema
 
