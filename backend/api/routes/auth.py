@@ -15,12 +15,26 @@ from fastapi.responses import JSONResponse
 
 from api.deps import get_current_user
 from api.rate_limit import limiter
+from core.config import settings
 from core.jwt import create_token
 from notify import telegram as notify_mod
 from services import audit as audit_srv
+from services import refresh_tokens
 from services import web_users as web_users_srv
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+_REFRESH_COOKIE = "sb_refresh_token"
+
+
+def _cookie_kwargs(request: Request) -> dict:
+    """Cookie HttpOnly/SameSite=Strict, Secure solo sobre HTTPS."""
+    return {
+        "path": "/api/auth",
+        "httponly": True,
+        "samesite": "strict",
+        "secure": request.url.scheme == "https",
+    }
 
 
 @router.post("/login")
@@ -66,14 +80,60 @@ async def login(request: Request):
         )
     web_users_srv.reset_failed_logins(username)
     token = create_token(user)
+    response = JSONResponse(
+        {
+            "access_token": token,
+            "expires_in": settings().jwt_ttl_seconds,
+            "token_type": "bearer",
+            "user": {"id": user["id"], "username": user["username"], "rol": user["rol"]},
+        }
+    )
+    refresh = refresh_tokens.refresh_store.create(user)
+    response.set_cookie(
+        _REFRESH_COOKIE, refresh, max_age=settings().refresh_ttl_seconds, **_cookie_kwargs(request)
+    )
     audit_srv.log_action("web_login", "ok", web_user_id=user["id"])
-    return {
-        "access_token": token,
-        "token_type": "bearer",
-        "user": {"id": user["id"], "username": user["username"], "rol": user["rol"]},
-    }
+    return response
 
 
 @router.get("/me")
 async def me(user: dict = Depends(get_current_user)) -> dict:
     return {"id": user["id"], "username": user["username"], "rol": user["rol"]}
+
+
+@router.post("/refresh")
+async def refresh_token(request: Request):
+    """Renueva el access token usando el refresh token de la cookie y rota la cookie."""
+    raw = request.cookies.get(_REFRESH_COOKIE)
+    rotated = refresh_tokens.refresh_store.validate_and_rotate(raw) if raw else None
+    if rotated is None:
+        return JSONResponse({"detail": "Sesión expirada."}, status_code=401)
+    new_refresh, entry = rotated
+    user = {
+        "id": entry["user_id"],
+        "username": entry["username"],
+        "rol": entry["rol"],
+    }
+    token = create_token(user)
+    response = JSONResponse(
+        {
+            "access_token": token,
+            "expires_in": settings().jwt_ttl_seconds,
+            "token_type": "bearer",
+            "user": {"id": user["id"], "username": user["username"], "rol": user["rol"]},
+        }
+    )
+    response.set_cookie(
+        _REFRESH_COOKIE, new_refresh, max_age=settings().refresh_ttl_seconds, **_cookie_kwargs(request)
+    )
+    return response
+
+
+@router.post("/logout")
+async def logout(request: Request):
+    raw = request.cookies.get(_REFRESH_COOKIE)
+    if raw:
+        refresh_tokens.refresh_store.revoke(raw)
+    response = JSONResponse({"ok": True})
+    response.delete_cookie(_REFRESH_COOKIE, path="/api/auth")
+    return response

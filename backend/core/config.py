@@ -41,6 +41,10 @@ class Settings:
         except ValueError:
             self.pbkdf2_iterations = 600_000
 
+        # Token de acceso (JWT) corto + refresh token en cookie HttpOnly (M6).
+        self.jwt_ttl_seconds: int = self._int_env("JWT_TTL_MINUTES", 60) * 60
+        self.refresh_ttl_seconds: int = self._int_env("REFRESH_TTL_DAYS", 7) * 24 * 3600
+
         self.web_admin_username: str = os.getenv("WEB_ADMIN_USERNAME", "admin")
         self.web_admin_password: str = os.getenv("WEB_ADMIN_PASSWORD", "")
 

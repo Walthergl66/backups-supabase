@@ -17,7 +17,6 @@ from typing import Any
 
 from core.config import settings
 
-TOKEN_TTL_SECONDS = 12 * 3600  # 12 h, igual que las sesiones web antiguas
 _ISSUER = "supabase-backups"
 
 _b64 = base64.urlsafe_b64encode
@@ -54,7 +53,7 @@ def create_token(user: dict, ttl: int | None = None) -> str:
         "username": user["username"],
         "rol": user["rol"],
         "iat": now,
-        "exp": now + (ttl or TOKEN_TTL_SECONDS),
+        "exp": now + (ttl or settings().jwt_ttl_seconds),
     }
     return _encode(payload)
 

@@ -26,6 +26,7 @@ export function AuthProvider({ children }) {
 
   const logout = () => {
     clearToken()
+    authService.logoutRemote().catch(() => {})
     setUser(null)
   }
 

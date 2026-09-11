@@ -189,6 +189,8 @@ docker compose up -d             # volver a arrancar
 | `CORS_ALLOW_ORIGINS` | Orígenes permitidos al API, separados por coma (default localhost/127.0.0.1:8080) |
 | `WEB_DOCS_ENABLED` | Sirve o no Swagger/ReDoc/OpenAPI (default `false`; en producción mantener desactivado) |
 | `PBKDF2_ITERATIONS` | Iteraciones PBKDF2-SHA256 para contraseñas web (default 600000; migración automática al login) |
+| `JWT_TTL_MINUTES` | Vigencia del access token JWT web (default 60; se renueva con el refresh token) |
+| `REFRESH_TTL_DAYS` | Vigencia del refresh token en cookie HttpOnly (default 7; rotación en cada uso) |
 
 ## Notas
 
