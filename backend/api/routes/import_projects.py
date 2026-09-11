@@ -68,7 +68,10 @@ async def create_imported_projects(request: Request, admin: dict = Depends(requi
     try:
         all_projects = await asyncio.to_thread(api_srv.list_projects, pat)
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=f"Error al consultar Supabase: {exc}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Error al consultar Supabase: {sanitize.redact_secrets(str(exc))}",
+        ) from exc
 
     account_name = account_name or "Importada desde bot"
     try:
