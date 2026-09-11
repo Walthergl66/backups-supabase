@@ -7,6 +7,8 @@ import subprocess
 
 import httpx
 
+from core import sanitize
+
 logger = logging.getLogger(__name__)
 
 SUPABASE_API = "https://api.supabase.com"
@@ -31,11 +33,11 @@ def check_database_connection(conn_str: str) -> tuple[bool, str]:
     except FileNotFoundError:
         return False, "El binario psql no está disponible (instala postgresql-client)."
     except OSError as exc:
-        return False, f"No se pudo lanzar psql: {exc}"
+        return False, sanitize.redact_secrets(f"No se pudo lanzar psql: {exc}")
     if proc.returncode == 0:
         return True, "La base de datos responde correctamente."
     tail = (proc.stderr or proc.stdout or "").strip().splitlines()
-    return False, "\n".join(tail[-3:]) or "Conexión rechazada."
+    return False, sanitize.redact_secrets("\n".join(tail[-3:]) or "Conexión rechazada.")
 
 
 def check_supabase_api(project_ref: str, pat: str) -> tuple[bool, str]:
