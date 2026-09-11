@@ -28,15 +28,16 @@ OPENAPI_URL = "/api/openapi.json"
 
 
 def create_app() -> FastAPI:
+    docs_enabled = settings().web_docs_enabled
     app = FastAPI(
         title="Supabase Backups API",
         description="API REST del panel de backups de Supabase.\n\n"
                     "Autentícate con el botón **Authorize**: pega SOLO el token JWT "
                     "(login en `POST /api/auth/login`); la API lo envía como `Bearer`.",
         version="1.0.0",
-        docs_url=DOCS_URL,
-        redoc_url=REDOC_URL,
-        openapi_url=OPENAPI_URL,
+        docs_url=DOCS_URL if docs_enabled else None,
+        redoc_url=REDOC_URL if docs_enabled else None,
+        openapi_url=OPENAPI_URL if docs_enabled else None,
     )
 
     app.add_middleware(
@@ -64,7 +65,8 @@ def create_app() -> FastAPI:
 
     # Esquema de seguridad Bearer para el botón "Authorize" de Swagger.
     # Solo afecta a la documentación: la autenticación real la leen las deps.
-    _setup_bearer_auth(app)
+    if docs_enabled:
+        _setup_bearer_auth(app)
 
     app.include_router(auth.router)
     app.include_router(accounts.router)

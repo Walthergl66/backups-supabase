@@ -34,6 +34,8 @@ class Settings:
             o.strip() for o in os.getenv("CORS_ALLOW_ORIGINS", "").split(",") if o.strip()
         ] or ["http://localhost:8080", "http://127.0.0.1:8080"]
 
+        self.web_docs_enabled: bool = os.getenv("WEB_DOCS_ENABLED", "").strip().lower() in ("1", "true", "yes", "on")
+
         self.web_admin_username: str = os.getenv("WEB_ADMIN_USERNAME", "admin")
         self.web_admin_password: str = os.getenv("WEB_ADMIN_PASSWORD", "")
 

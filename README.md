@@ -187,6 +187,7 @@ docker compose up -d             # volver a arrancar
 | `BACKUP_TIMEOUT_SECONDS` | Timeout de `pg_dump` en segundos (default 600) |
 | `WEB_HOST` / `WEB_PORT` | API interna del backend (default `0.0.0.0:8080`) |
 | `CORS_ALLOW_ORIGINS` | Orígenes permitidos al API, separados por coma (default localhost/127.0.0.1:8080) |
+| `WEB_DOCS_ENABLED` | Sirve o no Swagger/ReDoc/OpenAPI (default `false`; en producción mantener desactivado) |
 
 ## Notas
 
