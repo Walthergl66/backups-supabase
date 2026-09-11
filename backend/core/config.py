@@ -30,6 +30,10 @@ class Settings:
 
         self.backup_encryption_key: str = self._required("BACKUP_ENCRYPTION_KEY")
 
+        self.cors_allow_origins: list[str] = [
+            o.strip() for o in os.getenv("CORS_ALLOW_ORIGINS", "").split(",") if o.strip()
+        ] or ["http://localhost:8080", "http://127.0.0.1:8080"]
+
         self.web_admin_username: str = os.getenv("WEB_ADMIN_USERNAME", "admin")
         self.web_admin_password: str = os.getenv("WEB_ADMIN_PASSWORD", "")
 

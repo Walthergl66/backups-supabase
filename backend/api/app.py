@@ -14,6 +14,7 @@ from slowapi.errors import RateLimitExceeded
 from api import deps
 from api.rate_limit import _client_address, limiter, should_notify_rate_limit
 from api.routes import accounts, audit, auth, backups, import_projects, projects, users, web_users
+from core.config import settings
 from notify import telegram as notify_mod
 from services import audit as audit_srv
 from services import projects as projects_srv
@@ -40,7 +41,7 @@ def create_app() -> FastAPI:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # se recomienda restringir en producción; ver docker-compose/env
+        allow_origins=settings().cors_allow_origins,
         allow_methods=["*"],
         allow_headers=["*"],
     )
