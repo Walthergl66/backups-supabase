@@ -11,10 +11,9 @@ FROM nginx:1.27-alpine
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/nginx.conf
 
-# Usuario sin privilegios y directorios temporales propios dentro del contenedor.
+# Usuario sin privilegios; los temporales de nginx viven en /tmp (tmpfs en runtime).
 RUN adduser -D -H -u 1000 -s /sbin/nologin appuser \
     && chown -R appuser:appuser /usr/share/nginx/html \
-    && mkdir -p /tmp/nginx && chown -R appuser:appuser /tmp/nginx \
     && rm -rf /etc/nginx/conf.d /etc/nginx/templates /docker-entrypoint.d /var/cache/nginx
 
 USER appuser

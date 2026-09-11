@@ -147,6 +147,10 @@ Toda acción queda registrada en `audit_log` y en el historial
 - Los archivos de backup (`.dump`/`.sql`) se cifran en disco con Fernet
   (`BACKUP_ENCRYPTION_KEY`) y su claro se borra; a Telegram se envían
   descifrados en memoria, sin tocar el disco.
+- Contenedores sin privilegios: proceso como usuario no-root (UID 1000),
+  capacidades eliminadas (`cap_drop: ALL`), `no-new-privileges` y rootfs de
+  solo lectura con `tmpfs` para `/tmp`. El frontend corre nginx sin root
+  escuchando en el puerto no privilegiado 8080.
 - La API nunca devuelve credenciales completas (solo los últimos 4 caracteres).
 - Contraseñas web con PBKDF2-SHA256 (salt por usuario).
 - Autenticación API con **tokens JWT** (HS256) enviados como `Authorization: Bearer`.
