@@ -61,6 +61,13 @@ def authenticate(username: str, password: str) -> dict | None:
         return None
     if not security.verify_password(password, row["password_hash"]):
         return None
+    # Migración progresiva: si el hash usa menos iteraciones que las actuales,
+    # se recalcula al vuelo con el estándar y se actualiza en la BD.
+    if security.needs_rehash(row["password_hash"]):
+        db.execute(
+            "UPDATE web_users SET password_hash = ? WHERE id = ?",
+            (security.hash_password(password), row["id"]),
+        )
     return _dict(row)
 
 

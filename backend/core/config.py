@@ -36,6 +36,11 @@ class Settings:
 
         self.web_docs_enabled: bool = os.getenv("WEB_DOCS_ENABLED", "").strip().lower() in ("1", "true", "yes", "on")
 
+        try:
+            self.pbkdf2_iterations: int = int(os.getenv("PBKDF2_ITERATIONS", "600000"))
+        except ValueError:
+            self.pbkdf2_iterations = 600_000
+
         self.web_admin_username: str = os.getenv("WEB_ADMIN_USERNAME", "admin")
         self.web_admin_password: str = os.getenv("WEB_ADMIN_PASSWORD", "")
 
