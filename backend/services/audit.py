@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta
+
 from core import db
 
 
@@ -38,3 +40,11 @@ def list_audit(limit: int = 100) -> list:
         """,
         (limit,),
     )
+
+
+def purge_old(days: int) -> int:
+    """Borra entradas de auditoría anteriores a `days` días. Devuelve nº borrado."""
+    cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
+    with db.connect() as conn:
+        cur = conn.execute("DELETE FROM audit_log WHERE timestamp < ?", (cutoff,))
+        return cur.rowcount

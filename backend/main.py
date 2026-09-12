@@ -30,6 +30,7 @@ from core import sanitize
 from core.config import settings
 from notify import telegram as notify_mod
 from services import audit as audit_srv
+from services import backup_history as history_srv
 from services import web_users as web_users_srv
 
 
@@ -89,6 +90,24 @@ def bootstrap_admin() -> None:
         )
 
 
+def retention_purge() -> dict:
+    """Purga audit_log y backup_history por antigüedad (configurable)."""
+    cfg = settings()
+    removal = {
+        "audit": audit_srv.purge_old(cfg.audit_retention_days),
+        "history": history_srv.purge_old(cfg.history_retention_days),
+    }
+    return removal
+
+
+async def retention_purge_job(log: logging.Logger) -> None:
+    try:
+        removal = await asyncio.to_thread(retention_purge)
+        log.info("Purga de retención: audit=%d history=%d", removal["audit"], removal["history"])
+    except Exception as exc:  # noqa: BLE001
+        log.exception("Falló la purga de retención de logs")
+
+
 async def daily_self_backup_job(log: logging.Logger) -> None:
     """Self-backup diario de la base del panel + envío a Telegram (opcional)."""
     try:
@@ -136,6 +155,19 @@ def setup_scheduler(log: logging.Logger) -> AsyncIOScheduler:
         "Self-backup diario de la base programado a las %02d:%02d (%s)",
         hour, minute, tzinfo,
     )
+
+    scheduler.add_job(
+        retention_purge_job,
+        CronTrigger(day_of_week="mon", hour=4, minute=0, timezone=tzinfo),
+        args=[log],
+        id="retention_weekly",
+        misfire_grace_time=3600,
+        coalesce=True,
+    )
+    log.info(
+        "Purga semanal de logs programada (lunes 04:00 %s): audit=%d días, history=%d días",
+        tzinfo, settings().audit_retention_days, settings().history_retention_days,
+    )
     return scheduler
 
 
@@ -147,6 +179,7 @@ async def main() -> None:
     db_core.init_db()
     bootstrap_admin()
     self_backup_mod.maiden_run_safe()
+    retention_purge()
     removed = cleanup_mod.sweep_plaintext_backups()
     if removed:
         log.warning("Se encontraron y eliminaron archivos de backup en claro: %s", "; ".join(removed[:10]))

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta
+
 from core import db
 
 
@@ -46,3 +48,11 @@ def recent(project_id: int, limit: int = 10) -> list[dict]:
 def last_ok(project_id: int) -> dict | None:
     rows = recent(project_id, limit=1)
     return rows[0] if rows else None
+
+
+def purge_old(days: int) -> int:
+    """Borra historial anterior a `days` días. Devuelve nº borrado."""
+    cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
+    with db.connect() as conn:
+        cur = conn.execute("DELETE FROM backup_history WHERE fecha < ?", (cutoff,))
+        return cur.rowcount
