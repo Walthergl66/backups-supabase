@@ -11,15 +11,18 @@ def _insert_old(db, table, days=400):
         db.execute(
             f"INSERT INTO {table} (accion, resultado, timestamp) VALUES ('t','ok',?)", (old,)
         )
+        db.execute("INSERT INTO audit_log (accion, resultado) VALUES ('reciente','ok')")
     else:
-        db.execute(
-            f"INSERT INTO {table} (project_id, resultado, fecha) VALUES (1,'ok',?)", (old,)
+        acc = db.execute("INSERT INTO accounts (nombre, pat_encrypted) VALUES ('A','x')")
+        pid = db.execute(
+            "INSERT INTO projects (slug, nombre, account_id, connection_encrypted, project_ref) "
+            "VALUES ('p1','P',?, 'conn', 'ref')",
+            (acc,),
         )
-    db.execute(
-        f"INSERT INTO {table} (accion, resultado) VALUES ('reciente','ok')"
-        if table == "audit_log"
-        else f"INSERT INTO {table} (project_id, resultado) VALUES (1,'ok')"
-    )
+        db.execute(
+            f"INSERT INTO {table} (project_id, resultado, fecha) VALUES (?, 'ok', ?)", (pid, old)
+        )
+        db.execute(f"INSERT INTO {table} (project_id, resultado) VALUES (?, 'ok')", (pid,))
 
 
 def test_purge_borra_solo_lo_viejo(db):

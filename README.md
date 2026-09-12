@@ -128,6 +128,18 @@ python main.py         # inicia API + bot
 
 Los iconos del PWA se regeneran con `node scripts/generate-icons.mjs`.
 
+## Tests
+
+```bash
+cd backend
+python3 -m venv .venv && . .venv/bin/activate
+pip install -r requirements-dev.txt
+pytest -p no:cacheprovider
+```
+
+Los tests usan bases de datos temporales en `/tmp` (no tocan tus datos) y
+cubren slug, cifrado, barrido de claros, retención, permisos y RBAC vía API.
+
 ## Uso del bot de Telegram
 
 | Comando | Descripción |

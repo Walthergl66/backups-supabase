@@ -34,7 +34,7 @@ CREATE TABLE projects (
     project_ref   TEXT NOT NULL,                   -- referencia para la Management API
     created_at    TEXT NOT NULL DEFAULT (datetime('now')),
     activo        INTEGER NOT NULL DEFAULT 1,
-    schedule      TEXT                                -- cron 5 campos (min hora dia mes dow); NULL/'' = solo manual
+    schedule      TEXT,                               -- cron 5 campos (min hora dia mes dow); NULL/'' = solo manual
     archived      INTEGER NOT NULL DEFAULT 0          -- 1 = perdido el proyecto (borrado lógico)
 );
 -- ------------------------------------------------------------------
