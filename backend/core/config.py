@@ -62,6 +62,13 @@ class Settings:
         self.backup_keep_count: int = self._int_env("BACKUP_KEEP_COUNT", 10)
         self.backup_timeout_seconds: int = self._int_env("BACKUP_TIMEOUT_SECONDS", 600)
 
+        # Self-backup de la propia base del panel (SQLite cifrado + Telegram).
+        self.self_backup_dir: Path = Path(os.getenv("SELF_BACKUP_DIR", str(self.backup_dir / "self")))
+        self.self_backup_keep: int = self._int_env("SELF_BACKUP_KEEP_COUNT", 10)
+        self.self_backup_time: str = os.getenv("SELF_BACKUP_TIME", "03:00")
+        self.self_backup_tz: str = os.getenv("SELF_BACKUP_TZ", "UTC")
+        self.self_backup_telegram: bool = os.getenv("SELF_BACKUP_TELEGRAM", "").strip().lower() in ("1", "true", "yes", "on")
+
         self.web_host: str = os.getenv("WEB_HOST", "0.0.0.0")
         self.web_port: int = self._int_env("WEB_PORT", 8080)
 
