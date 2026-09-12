@@ -35,6 +35,7 @@ CREATE TABLE projects (
     created_at    TEXT NOT NULL DEFAULT (datetime('now')),
     activo        INTEGER NOT NULL DEFAULT 1,
     schedule      TEXT                                -- cron 5 campos (min hora dia mes dow); NULL/'' = solo manual
+    archived      INTEGER NOT NULL DEFAULT 0          -- 1 = perdido el proyecto (borrado lógico)
 );
 -- ------------------------------------------------------------------
 -- Usuarios del bot de Telegram.

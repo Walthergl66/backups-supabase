@@ -177,7 +177,7 @@ def delete_project(project_id: int) -> None:
         raise ProjectError("El proyecto no existe.")
     archived_slug = f"(eliminado)-{current['id']}-{current['slug']}"
     db.execute(
-        "UPDATE projects SET activo = 0, slug = ? WHERE id = ?",
+        "UPDATE projects SET activo = 0, archived = 1, slug = ? WHERE id = ?",
         (archived_slug, project_id),
     )
 
@@ -194,7 +194,7 @@ def restore_project(project_id: int, slug: str | None = None) -> None:
     if clash is not None:
         raise ProjectError(f"El slug '{candidate}' ya está en uso por otro proyecto.")
     db.execute(
-        "UPDATE projects SET activo = 1, slug = ? WHERE id = ?",
+        "UPDATE projects SET activo = 1, archived = 0, slug = ? WHERE id = ?",
         (candidate, project_id),
     )
 

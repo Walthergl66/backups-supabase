@@ -123,9 +123,14 @@ def get_permissions(user_id: int) -> list[dict]:
     ]
 
 
+_CAN_PERMISSIONS = frozenset({"can_backup", "can_monitor"})
+
+
 def can(user_id: int, project_id: int, permission: str) -> bool:
     """Comprueba si el usuario (admin implícito o permiso explícito) puede
     realizar `permission` (can_backup | can_monitor) sobre el proyecto."""
+    if permission not in _CAN_PERMISSIONS:
+        raise UserError(f"Permiso desconocido: {permission!r}")
     user = db.fetch_one("SELECT rol, activo FROM users WHERE id = ?", (user_id,))
     if user is None or not user["activo"]:
         return False
