@@ -14,13 +14,19 @@ import asyncio
 import logging
 import secrets
 from logging.handlers import RotatingFileHandler
+from zoneinfo import ZoneInfo
 
 import uvicorn
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 
 from api.app import create_app
+from backup import self_backup as self_backup_mod
 from bot import build_application, run_bot_forever
 from core import db as db_core
+from core import sanitize
 from core.config import settings
+from notify import telegram as notify_mod
 from services import audit as audit_srv
 from services import web_users as web_users_srv
 
@@ -81,6 +87,56 @@ def bootstrap_admin() -> None:
         )
 
 
+async def daily_self_backup_job(log: logging.Logger) -> None:
+    """Self-backup diario de la base del panel + envío a Telegram (opcional)."""
+    try:
+        enc = await asyncio.to_thread(self_backup_mod.run_self_backup)
+        if enc.exists():
+            log.info("Self-backup diario creado: %s (%d bytes)", enc.name, enc.stat().st_size)
+        if settings().self_backup_telegram:
+            await self_backup_mod.send_latest_to_telegram()
+    except Exception as exc:  # noqa: BLE001
+        log.exception("Falló el self-backup diario de la base")
+        try:
+            await notify_mod.notify_admins(
+                f"⚠️ Falló el self-backup de la base del panel: {sanitize.redact_secrets(str(exc))}"
+            )
+        except Exception as notify_exc:  # noqa: BLE001
+            log.error("Y además falló la alerta por Telegram: %s", notify_exc)
+
+
+def setup_scheduler(log: logging.Logger) -> AsyncIOScheduler:
+    """Agenda el self-backup diario a la hora y zona configuradas (UTC por defecto)."""
+    cfg = settings()
+    try:
+        tzinfo = ZoneInfo(cfg.self_backup_tz)
+    except Exception:  # noqa: BLE001 - zona inválida: se cae a UTC
+        tzinfo = ZoneInfo("UTC")
+
+    hour, minute = 3, 0
+    try:
+        hora, minuto = cfg.self_backup_time.split(":")
+        hour, minute = int(hora), int(minuto)
+    except Exception:  # noqa: BLE001 - formato inválido: se cae a 03:00
+        pass
+
+    scheduler = AsyncIOScheduler(timezone=tzinfo)
+    scheduler.add_job(
+        daily_self_backup_job,
+        CronTrigger(hour=hour, minute=minute, timezone=tzinfo),
+        args=[log],
+        id="self_backup_daily",
+        misfire_grace_time=3600,
+        coalesce=True,
+    )
+    scheduler.start()
+    log.info(
+        "Self-backup diario de la base programado a las %02d:%02d (%s)",
+        hour, minute, tzinfo,
+    )
+    return scheduler
+
+
 async def main() -> None:
     cfg = settings()
     _setup_logging()
@@ -88,6 +144,7 @@ async def main() -> None:
 
     db_core.init_db()
     bootstrap_admin()
+    self_backup_mod.maiden_run_safe()
 
     app = create_app()
     bot_app = build_application()
@@ -99,11 +156,13 @@ async def main() -> None:
     )
     server = uvicorn.Server(config)
 
+    scheduler = setup_scheduler(log)
     bot_task = asyncio.create_task(run_bot_forever(bot_app))
     log.info("Interfaz web expuesta en http://%s:%s", cfg.web_host, cfg.web_port)
     try:
         await server.serve()
     finally:
+        scheduler.shutdown(wait=False)
         bot_task.cancel()
         try:
             await bot_task

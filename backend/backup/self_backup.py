@@ -64,7 +64,6 @@ def _rotate(dest_dir: Path) -> None:
 async def send_latest_to_telegram() -> None:
     """Envía el self-backup más reciente a los admins (descifrado en memoria)."""
     from notify import telegram as notify_mod
-    from services import users as users_srv
 
     dest_dir: Path = settings().self_backup_dir
     files = sorted(
@@ -82,17 +81,11 @@ async def send_latest_to_telegram() -> None:
         await notify_mod.notify_admins("⚠️ No se pudo descifrar el self-backup de la base para enviarlo.")
         return
 
-    admins = users_srv.list_admin_chat_ids()
-    if not admins:
-        logger.info("Self-backup sin destinatarios (no hay admins de Telegram).")
-        return
-
-    nombre = newest.name[: -len(".enc")]
-    for chat_id in admins:
-        await notify_mod.send_document_bytes(
-            None, chat_id, nombre, data,
-            caption=f"Self-backup de la base del panel ({nombre})",
-        )
+    await notify_mod.notify_admins_document(
+        newest.name,
+        data,
+        caption=f"Self-backup de la base del panel ({newest.name.removesuffix('.enc')})",
+    )
 
 
 def maiden_run_safe() -> None:
