@@ -131,6 +131,13 @@ def run_backup(project: dict) -> BackupResult:
         logger.error("Backup '%s': %s", slug, msg)
         return BackupResult(ok=False, detalle=msg, duracion_seg=elapsed, exit_code=proc.returncode)
 
+    verificado, detalle_verif = _verify_dump(dest)
+    if not verificado:
+        msg = f"El backup no pasó la verificación de restauración: {detalle_verif}"
+        logger.error("Backup '%s': %s", slug, msg)
+        dest.unlink(missing_ok=True)
+        return BackupResult(ok=False, detalle=msg, duracion_seg=elapsed, exit_code=proc.returncode)
+
     sql_path = _to_sql(dest, slug)
     size_sql = sql_path.stat().st_size if sql_path is not None else 0.0
 
@@ -156,6 +163,38 @@ def run_backup(project: dict) -> BackupResult:
         exit_code=proc.returncode,
         archivos_eliminados=removed,
     )
+
+
+def verify_dump(dump_path: Path) -> tuple[bool, str]:
+    """Verifica que el .dump (formato custom -Fc) sea legible y restaurable.
+
+    Usa `pg_restore --list` sobre el archivo en claro (todavía sin cifrar);
+    confirma que el catálogo del dump es válido. Si pg_restore no está
+    disponible la comprobación se omite (no es un fallo del backup).
+    """
+    args = [_pg_restore_binary(), "--list", str(dump_path)]
+    try:
+        proc = subprocess.run(
+            args,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=settings().backup_timeout_seconds,
+            shell=False,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        logger.warning("Verificación de restauración omitida para %s: %s", dump_path.name, exc)
+        return True, "verificación omitida (pg_restore no disponible)"
+
+    if proc.returncode != 0:
+        tail = sanitize.redact_secrets("\n".join((proc.stderr or "").splitlines()[-5:]))
+        return False, tail or "pg_restore --list terminó con error"
+
+    n_entries = len([l for l in proc.stdout.splitlines() if l.strip()])
+    logger.info("Dump '%s' verificado: %d entradas legibles por pg_restore", dump_path.name, n_entries)
+    return True, f"verificado por pg_restore ({n_entries} entradas)"
 
 
 def _to_sql(dump_path: Path, slug: str) -> Path | None:

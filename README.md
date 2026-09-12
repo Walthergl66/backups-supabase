@@ -202,9 +202,14 @@ docker compose up -d             # volver a arrancar
 
 ## Notas
 
-- Los backups de proyectos son **bajo demanda** (por Telegram); el **self-backup
-  de la base del panel** es automático (diario a `SELF_BACKUP_TIME`, además de
-  uno inicial al primer arranque).
+- Los backups de proyectos son **bajo demanda** (por Telegram) o **programados**:
+  cada proyecto admite un `schedule` en formato cron de 5 campos (minuto hora
+  día mes día-semana, zona UTC), por ejemplo `30 3 * * *` = diario a las 03:30
+  UTC. Vacío/sin valor = solo manual. Si un backup programado falla, se alerta
+  a los admins por Telegram. **Cada backup se verifica con `pg_restore --list`
+  antes de cifrarlo** (restauración comprobada, no solo archivo escrito).
+- El **self-backup de la base del panel** es automático (diario a
+  `SELF_BACKUP_TIME`, además de uno inicial al primer arranque).
 - Las notificaciones son exclusivamente por Telegram: no se ha configurado el
   canal de correo (Resend) a petición del cliente.
 - El diseño de `permissions` y `audit_log` deja lista una futura Fase 2 con

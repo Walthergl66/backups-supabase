@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from api.deps import get_current_user, require_admin
+from backup import scheduler_jobs
 from services import accounts as accounts_srv
 from services import audit as audit_srv
 from services import backup_history as history_srv
@@ -43,9 +44,11 @@ async def create_project(request: Request, admin: dict = Depends(require_admin))
             account_id=int(data.get("account_id", 0)),
             connection=data.get("connection", ""),
             project_ref=data.get("project_ref", ""),
+            schedule=data.get("schedule") or None,
         )
     except projects_srv.ProjectError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+    scheduler_jobs.resync()
     audit_srv.log_action("web_proyecto_crear", "ok", web_user_id=admin["id"],
                          project_id=project_id, detalle=f"slug '{data.get('slug', '').strip()}'")
     return {"id": project_id}
@@ -71,9 +74,11 @@ async def update_project(project_id: int, request: Request, admin: dict = Depend
             connection=data.get("connection") or None,
             project_ref=data.get("project_ref") or None,
             activo=bool(data.get("activo", True)),
+            schedule=data.get("schedule"),
         )
     except projects_srv.ProjectError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+    scheduler_jobs.resync()
     audit_srv.log_action("web_proyecto_editar", "ok", web_user_id=admin["id"],
                          project_id=project_id)
     return {"ok": True}
@@ -85,6 +90,7 @@ async def delete_project(project_id: int, admin: dict = Depends(require_admin)):
         projects_srv.delete_project(project_id)
     except projects_srv.ProjectError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+    scheduler_jobs.resync()
     audit_srv.log_action("web_proyecto_eliminar", "ok", web_user_id=admin["id"],
                          project_id=project_id, detalle="eliminación lógica, historial conservado")
     return {"ok": True}
@@ -101,6 +107,7 @@ async def restore_project(project_id: int, request: Request, admin: dict = Depen
         projects_srv.restore_project(project_id, slug=data.get("slug") or None)
     except projects_srv.ProjectError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+    scheduler_jobs.resync()
     audit_srv.log_action("web_proyecto_restaurar", "ok", web_user_id=admin["id"],
                          project_id=project_id)
     return {"ok": True}

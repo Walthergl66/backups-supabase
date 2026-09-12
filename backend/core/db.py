@@ -41,6 +41,7 @@ def _migrate() -> None:
         "ALTER TABLE users ADD COLUMN supabase_pat_encrypted TEXT",
         "ALTER TABLE web_users ADD COLUMN failed_attempts INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE web_users ADD COLUMN locked_until TEXT",
+        "ALTER TABLE projects ADD COLUMN schedule TEXT",
     ]
     with connect() as conn:
         for statement in statements:

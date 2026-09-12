@@ -21,6 +21,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from api.app import create_app
+from backup import scheduler_jobs
 from backup import self_backup as self_backup_mod
 from bot import build_application, run_bot_forever
 from core import db as db_core
@@ -157,6 +158,8 @@ async def main() -> None:
     server = uvicorn.Server(config)
 
     scheduler = setup_scheduler(log)
+    scheduler_jobs.bind(scheduler)
+    scheduler_jobs.resync()
     bot_task = asyncio.create_task(run_bot_forever(bot_app))
     log.info("Interfaz web expuesta en http://%s:%s", cfg.web_host, cfg.web_port)
     try:

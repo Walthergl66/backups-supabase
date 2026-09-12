@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import re
 
+from apscheduler.triggers.cron import CronTrigger
+
 from core import db, crypto
 
 _SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
@@ -11,6 +13,20 @@ _SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 
 class ProjectError(Exception):
     pass
+
+
+def _validate_schedule(schedule: str | None) -> str | None:
+    """Valida un cron de 5 campos. Devuelve la expresión normalizada o None."""
+    expr = (schedule or "").strip()
+    if not expr:
+        return None
+    if len(expr.split()) != 5:
+        raise ProjectError("El cron debe tener 5 campos: minuto hora día mes día-semana (ej. '30 3 * * *').")
+    try:
+        CronTrigger.from_crontab(expr)
+    except Exception as exc:  # noqa: BLE001 - cualquier formato inválido
+        raise ProjectError(f"Expresión cron inválida: {exc}") from exc
+    return expr
 
 
 def _dict(row, include_secret: bool = False) -> dict | None:
@@ -25,6 +41,7 @@ def _dict(row, include_secret: bool = False) -> dict | None:
         "project_ref": row["project_ref"],
         "activo": bool(row["activo"]),
         "created_at": row["created_at"],
+        "schedule": row["schedule"] if "schedule" in row.keys() else None,
         # Rellenado por consultas con JOIN cuando está disponible
         "connection_masked": crypto.mask(crypto.decrypt(row["connection_encrypted"]))
         if not include_secret
@@ -55,11 +72,13 @@ def _base_select(last_backup_join: bool = True) -> str:
     )
 
 
-def create_project(slug: str, nombre: str, account_id: int, connection: str, project_ref: str) -> int:
+def create_project(slug: str, nombre: str, account_id: int, connection: str, project_ref: str,
+                   schedule: str | None = None) -> int:
     slug = slug.strip()
     nombre = (nombre or "").strip()
     connection = connection.strip()
     project_ref = project_ref.strip()
+    schedule = _validate_schedule(schedule)
     if not _SLUG_RE.match(slug):
         raise ProjectError(
             "Slug inválido. Usa solo minúsculas, números, guiones o guiones bajos "
@@ -75,10 +94,10 @@ def create_project(slug: str, nombre: str, account_id: int, connection: str, pro
         raise ProjectError("La cuenta asociada no existe.")
     return db.execute(
         """
-        INSERT INTO projects (slug, nombre, account_id, connection_encrypted, project_ref)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO projects (slug, nombre, account_id, connection_encrypted, project_ref, schedule)
+        VALUES (?, ?, ?, ?, ?, ?)
         """,
-        (slug, nombre, account_id, crypto.encrypt(connection), project_ref),
+        (slug, nombre, account_id, crypto.encrypt(connection), project_ref, schedule),
     )
 
 
@@ -114,6 +133,7 @@ def update_project(
     connection: str | None = None,
     project_ref: str | None = None,
     activo: bool | None = None,
+    schedule: str | None = None,
 ) -> None:
     current = db.fetch_one("SELECT * FROM projects WHERE id = ?", (project_id,))
     if current is None:
@@ -126,11 +146,12 @@ def update_project(
         if clash is not None:
             raise ProjectError(f"Ya existe un proyecto con el slug '{new_slug}'.")
     new_connection = crypto.encrypt(connection.strip()) if connection and connection.strip() else current["connection_encrypted"]
+    new_schedule = _validate_schedule(schedule) if schedule is not None else current.get("schedule")
     db.execute(
         """
         UPDATE projects
         SET slug = ?, nombre = ?, account_id = ?, connection_encrypted = ?,
-            project_ref = ?, activo = ?
+            project_ref = ?, activo = ?, schedule = ?
         WHERE id = ?
         """,
         (
@@ -140,6 +161,7 @@ def update_project(
             new_connection,
             (project_ref or "").strip() or current["project_ref"],
             1 if activo is None else int(activo),
+            new_schedule,
             project_id,
         ),
     )
