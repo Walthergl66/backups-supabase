@@ -76,6 +76,8 @@ class Settings:
         self.web_host: str = os.getenv("WEB_HOST", "0.0.0.0")
         self.web_port: int = self._int_env("WEB_PORT", 8080)
 
+        self.log_level: str = os.getenv("LOG_LEVEL", "INFO").strip().upper()
+
     @staticmethod
     def _required(name: str) -> str:
         value = os.getenv(name, "").strip()

@@ -8,6 +8,7 @@ from core import db, security
 
 MAX_FAILED_ATTEMPTS = 8
 LOCKOUT_MINUTES = 15
+MIN_PASSWORD_LENGTH = 12
 
 
 class WebUserError(Exception):
@@ -31,8 +32,8 @@ def create_web_user(username: str, password: str, rol: str = "admin") -> int:
     rol = rol.strip() if rol.strip() else "admin"
     if not username:
         raise WebUserError("El nombre de usuario es obligatorio.")
-    if len(password or "") < 8:
-        raise WebUserError("La contraseña debe tener al menos 8 caracteres.")
+    if len(password or "") < MIN_PASSWORD_LENGTH:
+        raise WebUserError(f"La contraseña debe tener al menos {MIN_PASSWORD_LENGTH} caracteres.")
     if rol not in ("admin", "viewer"):
         raise WebUserError("Rol inválido (admin | viewer).")
     if db.fetch_one("SELECT id FROM web_users WHERE username = ?", (username,)):
@@ -141,8 +142,8 @@ def update_web_user(
     if new_rol not in ("admin", "viewer"):
         raise WebUserError("Rol inválido.")
     if password is not None and password.strip():
-        if len(password.strip()) < 8:
-            raise WebUserError("La contraseña debe tener al menos 8 caracteres.")
+        if len(password.strip()) < MIN_PASSWORD_LENGTH:
+            raise WebUserError(f"La contraseña debe tener al menos {MIN_PASSWORD_LENGTH} caracteres.")
         db.execute(
             "UPDATE web_users SET username = ?, password_hash = ?, rol = ?, activo = ?, "
             "failed_attempts = 0, locked_until = NULL WHERE id = ?",

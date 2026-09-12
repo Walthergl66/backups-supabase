@@ -40,7 +40,7 @@ def _setup_logging() -> None:
     log_dir.mkdir(parents=True, exist_ok=True)
 
     root = logging.getLogger()
-    root.setLevel(logging.INFO)
+    root.setLevel(getattr(logging, cfg.log_level, logging.INFO))
 
     formatter = logging.Formatter(
         "%(asctime)s %(levelname)s [%(name)s] %(message)s"
