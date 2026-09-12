@@ -212,6 +212,11 @@ docker compose up -d             # volver a arrancar
   antes de cifrarlo** (restauración comprobada, no solo archivo escrito).
 - El **self-backup de la base del panel** es automático (diario a
   `SELF_BACKUP_TIME`, además de uno inicial al primer arranque).
+- La IP del cliente se resuelve de forma fiable: nginx (`real_ip`) deriva la
+  real solo desde proxies confiados (loopback/LAN/`tailscale serve`) y
+  reenvía al backend un `X-Forwarded-For` recalculado de un solo valor, que
+  el mini-WAF/slowapi lee por su última entrada. Un header falsificado por un
+  cliente externo no se tiene en cuenta.
 - Las notificaciones son exclusivamente por Telegram: no se ha configurado el
   canal de correo (Resend) a petición del cliente.
 - El diseño de `permissions` y `audit_log` deja lista una futura Fase 2 con

@@ -18,9 +18,19 @@ _alert_lock = Lock()
 
 
 def _client_address(request) -> str:
+    """IP real del cliente.
+
+    Se usa la ÚLTIMA dirección de `X-Forwarded-For`: los proxies confiables
+    (solo nginx vía loopback) RECALCULAN y reenvían un único valor
+    verificado, así que el último elemento es el que impone el proxy y no
+    puede ser falsificado por el cliente. Sin header, se cae a la IP del
+    peer directo.
+    """
     forwarded = request.headers.get("X-Forwarded-For", "")
     if forwarded:
-        return forwarded.split(",")[0].strip()
+        parts = [p.strip() for p in forwarded.split(",") if p.strip()]
+        if parts:
+            return parts[-1]
     if request.client is not None:
         return request.client.host
     return "unknown"
