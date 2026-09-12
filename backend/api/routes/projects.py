@@ -19,6 +19,9 @@ async def list_projects(
     estado: str = Query("activos"),
     user: dict = Depends(get_current_user),
 ):
+    # Los proyectos desactivados se gestionan solo desde admin.
+    if estado in ("eliminados", "todos") and user.get("rol") != "admin":
+        raise HTTPException(status_code=403, detail="Solo los administradores pueden ver proyectos desactivados.")
     if estado == "eliminados":
         projects = [p for p in projects_srv.list_projects(only_active=False) if not p["activo"]]
     elif estado == "todos":

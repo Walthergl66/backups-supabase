@@ -47,6 +47,9 @@ const sectionLabels = [
   ['/auditoria', 'Bitácora'],
 ]
 
+// Rutas reservadas al rol admin (viewer solo monitorea).
+const ADMIN_ROUTES = ['/cuentas', '/importar', '/usuarios', '/usuarios-web']
+
 export default function Layout() {
   const { user, logout } = useAuth()
   const [open, setOpen] = useState(false)
@@ -54,6 +57,13 @@ export default function Layout() {
   const section = pathname === '/' ? 'Dashboard' : sectionLabels.find(([p]) => pathname.startsWith(p))?.[1] || ''
 
   const close = () => setOpen(false)
+  const isAdmin = user?.rol === 'admin'
+  const visibleGroups = groups
+    .map((g) => ({
+      ...g,
+      items: g.items.filter((it) => isAdmin || !ADMIN_ROUTES.some((r) => it.to.startsWith(r))),
+    }))
+    .filter((g) => g.items.length > 0)
 
   return (
     <div className="shell">
@@ -69,7 +79,7 @@ export default function Layout() {
         </div>
 
         <nav className="nav">
-          {groups.map((g, gi) => (
+          {visibleGroups.map((g, gi) => (
             <div key={gi}>
               {g.group && <div className="nav-group">{g.group}</div>}
               {g.items.map((it) => (

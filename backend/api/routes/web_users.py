@@ -12,7 +12,8 @@ router = APIRouter(prefix="/api/web-users", tags=["web users"])
 
 
 @router.get("")
-async def list_web_users(user: dict = Depends(get_current_user)):
+async def list_web_users(admin: dict = Depends(require_admin)):
+    """Listado de usuarios del panel: solo admin."""
     return web_users_srv.list_web_users()
 
 
@@ -33,7 +34,7 @@ async def create_web_user(request: Request, admin: dict = Depends(require_admin)
 
 
 @router.get("/{user_id}")
-async def get_web_user(user_id: int, user: dict = Depends(get_current_user)):
+async def get_web_user(user_id: int, admin: dict = Depends(require_admin)):
     u = web_users_srv.get_web_user_by_id(user_id)
     if u is None:
         raise HTTPException(status_code=404, detail="Usuario web no encontrado.")

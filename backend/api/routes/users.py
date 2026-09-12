@@ -20,7 +20,8 @@ def _user_with_perms(u: dict) -> dict:
 
 
 @router.get("")
-async def list_users(user: dict = Depends(get_current_user)):
+async def list_users(admin: dict = Depends(require_admin)):
+    """Listado sensible (chat_ids/permisos): solo admin."""
     return [_user_with_perms(u) for u in users_srv.list_users()]
 
 
@@ -41,7 +42,8 @@ async def create_user(request: Request, admin: dict = Depends(require_admin)):
 
 
 @router.get("/{user_id}")
-async def get_user(user_id: int, user: dict = Depends(get_current_user)):
+async def get_user(user_id: int, admin: dict = Depends(require_admin)):
+    """Detalle de usuario de Telegram (chat_id/permisos): solo admin."""
     u = users_srv.get_user_by_id(user_id)
     if u is None:
         raise HTTPException(status_code=404, detail="Usuario no encontrado.")

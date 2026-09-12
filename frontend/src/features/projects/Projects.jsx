@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { deleteProject, listProjects, restoreProject } from '../../services/projects.js'
+import { useAuth } from '../auth/AuthContext.jsx'
 import PageHead from '../../components/ui/PageHead.jsx'
 import Flash from '../../components/ui/Flash.jsx'
 import Badge from '../../components/ui/Badge.jsx'
@@ -44,14 +45,21 @@ export default function Projects() {
     }
   }
 
+  const { user } = useAuth()
+  const isAdmin = user?.rol === 'admin'
+
   return (
     <>
       <PageHead title="Proyectos" sub="Los proyectos conectados con su respaldo automático.">
         <div className="inline-actions">
-          <Link className="btn btn-ghost" to={`/proyectos?estado=${estado === 'eliminados' ? 'activos' : 'eliminados'}`}>
-            {estado === 'eliminados' ? 'Ver activos' : 'Ver eliminados'}
-          </Link>
-          <Link className="btn btn-primary" to="/proyectos/nuevo">Nuevo proyecto</Link>
+          {isAdmin && (
+            <Link className="btn btn-ghost" to={`/proyectos?estado=${estado === 'eliminados' ? 'activos' : 'eliminados'}`}>
+              {estado === 'eliminados' ? 'Ver activos' : 'Ver eliminados'}
+            </Link>
+          )}
+          {isAdmin && (
+            <Link className="btn btn-primary" to="/proyectos/nuevo">Nuevo proyecto</Link>
+          )}
         </div>
       </PageHead>
 
@@ -88,11 +96,15 @@ export default function Projects() {
                     {p.activo ? (
                       <>
                         <Link className="btn-link" to={`/proyectos/${p.id}/historial`}>Historial</Link>
-                        <Link className="btn-link" to={`/proyectos/${p.id}/editar`}>Editar</Link>
-                        <button className="btn-link btn-link-danger" onClick={() => del(p)}>Eliminar</button>
+                        {isAdmin && (
+                          <>
+                            <Link className="btn-link" to={`/proyectos/${p.id}/editar`}>Editar</Link>
+                            <button className="btn-link btn-link-danger" onClick={() => del(p)}>Eliminar</button>
+                          </>
+                        )}
                       </>
                     ) : (
-                      <button className="btn-link" onClick={() => restore(p)}>Restaurar</button>
+                      isAdmin && <button className="btn-link" onClick={() => restore(p)}>Restaurar</button>
                     )}
                   </td>
                 </tr>

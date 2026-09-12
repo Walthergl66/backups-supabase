@@ -12,7 +12,8 @@ router = APIRouter(prefix="/api/accounts", tags=["accounts"])
 
 
 @router.get("")
-async def list_accounts(user: dict = Depends(get_current_user)):
+async def list_accounts(admin: dict = Depends(require_admin)):
+    """Listado de cuentas Supabase (posible información sensible): solo admin."""
     return accounts_srv.list_accounts()
 
 
@@ -29,7 +30,7 @@ async def create_account(request: Request, admin: dict = Depends(require_admin))
 
 
 @router.get("/{account_id}")
-async def get_account(account_id: int, user: dict = Depends(get_current_user)):
+async def get_account(account_id: int, admin: dict = Depends(require_admin)):
     account = accounts_srv.get_account(account_id)
     if account is None:
         raise HTTPException(status_code=404, detail="Cuenta no encontrada.")
