@@ -12,6 +12,8 @@ import time
 from telegram import Update
 from telegram.ext import ContextTypes
 
+from backup import offsite as offsite_mod
+
 from backup import runner as backup_runner
 from bot.handlers.common import (
     UNAUTHORIZED_TEXT,
@@ -139,6 +141,10 @@ async def _cmd_backup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         audit_srv.log_action("bot_backup", "ok", user_id=user["id"], project_id=project["id"],
                              detalle=result.detalle)
         await notify_mod.send_message(context.bot, chat_id, detail)
+        try:
+            await asyncio.to_thread(offsite_mod.sync_new_backups)
+        except Exception:  # noqa: BLE001
+            pass  # los errores off-site ya avisan; no romper la respuesta del bot
         await _send_document_or_warn(
             context, chat_id, project["slug"],
             result.ruta_sql, result.tamaño_sql, "SQL",

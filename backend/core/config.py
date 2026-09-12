@@ -83,6 +83,16 @@ class Settings:
         self.daily_summary_time: str = os.getenv("DAILY_SUMMARY_TIME", "08:00")
         self.daily_summary_tz: str = os.getenv("DAILY_SUMMARY_TZ", "UTC")
 
+        # Copia fuera del sitio (S3 / R2 / B2 / MinIO). Requiere OFFSITE_ENABLED=on.
+        self.offsite_enabled: bool = os.getenv("OFFSITE_ENABLED", "").strip().lower() in ("1", "true", "yes", "on")
+        self.offsite_endpoint: str = os.getenv("OFFSITE_ENDPOINT", "").strip()
+        self.offsite_region: str = os.getenv("OFFSITE_REGION", "auto").strip()
+        self.offsite_access_key: str = os.getenv("OFFSITE_ACCESS_KEY", "")
+        self.offsite_secret_key: str = os.getenv("OFFSITE_SECRET_KEY", "")
+        self.offsite_bucket: str = os.getenv("OFFSITE_BUCKET", "").strip()
+        self.offsite_prefix: str = os.getenv("OFFSITE_PREFIX", "backups").strip() or "backups"
+        self.offsite_keep_count: int = self._int_env("OFFSITE_KEEP_COUNT", 30)
+
     @staticmethod
     def _required(name: str) -> str:
         value = os.getenv(name, "").strip()

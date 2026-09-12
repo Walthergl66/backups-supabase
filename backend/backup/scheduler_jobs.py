@@ -17,6 +17,7 @@ import logging
 
 from apscheduler.triggers.cron import CronTrigger
 
+from backup import offsite as offsite_mod
 from backup import runner as backup_runner
 from core import sanitize
 from notify import telegram as notify_mod
@@ -96,6 +97,7 @@ async def run_scheduled_backup(project_id: int) -> None:
         audit_srv.log_action("auto_backup", "ok", project_id=project_id,
                              detalle=f"programado: {result.detalle}")
         log.info("Backup programado completado: %s", result.detalle)
+        await _sync_offsite()
     else:
         history_srv.record(project_id, "error", detalle=result.detalle)
         audit_srv.log_action("auto_backup", "error", project_id=project_id,
@@ -109,3 +111,13 @@ async def run_scheduled_backup(project_id: int) -> None:
             )
         except Exception as exc:  # noqa: BLE001
             log.error("No se pudo notificar el fallo del backup programado: %s", exc)
+
+
+async def _sync_offsite() -> None:
+    """Copia fuera del sitio (best-effort); los fallos ya avisan por su cuenta."""
+    try:
+        summary = await asyncio.to_thread(offsite_mod.sync_new_backups)
+        if summary["enabled"] and summary["uploaded"]:
+            logger.info("Copia off-site: %d subido(s).", summary["uploaded"])
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Sincronización off-site falló: %s", exc)
