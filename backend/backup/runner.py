@@ -138,6 +138,8 @@ def run_backup(project: dict) -> BackupResult:
     if proc.returncode != 0:
         tail = detail.splitlines()
         tail = "\n".join(tail[-5:]) if tail else "(sin detalle de error)"
+        # pg_dump puede dejar un archivo parcial en claro: se elimina.
+        dest.unlink(missing_ok=True)
         logger.error("Backup '%s' falló (exit %s): %s", slug, proc.returncode, tail)
         return BackupResult(
             ok=False,
@@ -148,6 +150,7 @@ def run_backup(project: dict) -> BackupResult:
 
     if size <= 0:
         msg = "El archivo de backup quedó vacío; se descarta el resultado."
+        dest.unlink(missing_ok=True)
         logger.error("Backup '%s': %s", slug, msg)
         return BackupResult(ok=False, detalle=msg, duracion_seg=elapsed, exit_code=proc.returncode)
 

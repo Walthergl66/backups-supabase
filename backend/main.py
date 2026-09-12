@@ -21,6 +21,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from api.app import create_app
+from backup import cleanup as cleanup_mod
 from backup import scheduler_jobs
 from backup import self_backup as self_backup_mod
 from bot import build_application, run_bot_forever
@@ -146,6 +147,17 @@ async def main() -> None:
     db_core.init_db()
     bootstrap_admin()
     self_backup_mod.maiden_run_safe()
+    removed = cleanup_mod.sweep_plaintext_backups()
+    if removed:
+        log.warning("Se encontraron y eliminaron archivos de backup en claro: %s", "; ".join(removed[:10]))
+        try:
+            await notify_mod.notify_admins(
+                "⚠️ Se encontraron backups SIN CIFRAR (restos de un proceso "
+                "interrumpido) y se eliminaron por seguridad:\n"
+                + "\n".join(f"- {r}" for r in removed[:10])
+            )
+        except Exception as exc:  # noqa: BLE001
+            log.error("No se pudo alertar del barrido de claros: %s", exc)
 
     app = create_app()
     bot_app = build_application()
