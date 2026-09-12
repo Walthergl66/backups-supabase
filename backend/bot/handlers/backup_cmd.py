@@ -7,6 +7,7 @@ respetando el límite de 50 MB de la Bot API de Telegram.
 from __future__ import annotations
 
 import asyncio
+import time
 
 from telegram import Update
 from telegram.ext import ContextTypes
@@ -18,6 +19,7 @@ from bot.handlers.common import (
     _fmt_size,
     _project_for_action,
 )
+from core.config import settings
 from notify import telegram as notify_mod
 from services import audit as audit_srv
 from services import backup_history as history_srv
@@ -25,6 +27,11 @@ from services import projects as projects_srv
 from services import users as users_srv
 
 TELEGRAM_FILE_LIMIT = 50 * 1024 * 1024
+
+# Cooldown por chat y lock por proyecto (evita lanzar dos pg_dump sobre el
+# mismo proyecto a la vez).
+_last_run_at: dict[int, float] = {}
+_project_locks: dict[int, asyncio.Lock] = {}
 
 
 async def _send_document_or_warn(
@@ -90,11 +97,26 @@ async def _cmd_backup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         await notify_mod.send_message(context.bot, chat_id, UNAUTHORIZED_TEXT)
         return
 
+    cooldown = max(0, int(settings().backup_cooldown_seconds))
+    if cooldown > 0:
+        now = time.monotonic()
+        last = _last_run_at.get(chat_id, 0.0)
+        remaining = int(cooldown - (now - last))
+        if remaining > 0:
+            await notify_mod.send_message(
+                context.bot, chat_id,
+                f"⏳ Todavía está en marcha un backup reciente: espera {remaining}s.",
+            )
+            return
+        _last_run_at[chat_id] = now
+
     await notify_mod.send_message(
         context.bot, chat_id, f"Iniciando backup de '{project['slug']}'…"
     )
     full_project = projects_srv.get_project(project["id"], include_secret=True)
-    result = await asyncio.to_thread(backup_runner.run_backup, full_project)
+    lock = _project_locks.setdefault(project["id"], asyncio.Lock())
+    async with lock:
+        result = await asyncio.to_thread(backup_runner.run_backup, full_project)
 
     if result.ok:
         size_sql = result.tamaño_sql or 0.0

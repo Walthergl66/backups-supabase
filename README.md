@@ -185,6 +185,8 @@ docker compose up -d             # volver a arrancar
 | `BACKUP_DIR` | Carpeta de backups (default `/data/backups` en Docker) |
 | `BACKUP_KEEP_COUNT` | Rotación: backups a conservar por proyecto (default 10) |
 | `BACKUP_TIMEOUT_SECONDS` | Timeout de `pg_dump` en segundos (default 600) |
+| `BACKUP_MIN_FREE_MB` | Espacio libre mínimo en disco (MiB) exigido antes de un backup (default 1024; si hay menos, se aborta y se avisa) |
+| `BACKUP_COOLDOWN_SECONDS` | Cooldown entre `/backup` del mismo chat en el bot de Telegram (default 30; se evita llenar el disco con peticiones repetidas) |
 | `WEB_HOST` / `WEB_PORT` | API interna del backend (default `0.0.0.0:8080`) |
 | `CORS_ALLOW_ORIGINS` | Orígenes permitidos al API, separados por coma (default localhost/127.0.0.1:8080) |
 | `WEB_DOCS_ENABLED` | Sirve o no Swagger/ReDoc/OpenAPI (default `false`; en producción mantener desactivado) |

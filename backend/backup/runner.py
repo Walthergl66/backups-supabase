@@ -20,6 +20,7 @@ descifrarlos con la clave desde `core.crypto`.
 from __future__ import annotations
 
 import logging
+import shutil
 import subprocess
 import time
 from dataclasses import dataclass, field
@@ -63,6 +64,20 @@ def backup_path_for(slug: str) -> tuple[Path, Path]:
     return base, base / filename
 
 
+def _free_disk_mb(directory: Path) -> int:
+    """Espacio libre (MiB) en el filesystem que contiene `directory`."""
+    usage = shutil.disk_usage(directory)
+    return usage.free // (1024 * 1024)
+
+
+def _disk_has_enough_space(directory: Path) -> tuple[bool, str]:
+    free = _free_disk_mb(directory)
+    required = settings().backup_min_free_mb
+    if free < required:
+        return False, f"Espacio en disco insuficiente: {free} MiB libres, se requieren al menos {required} MiB."
+    return True, f"{free} MiB libres (mínimo {required} MiB)."
+
+
 def run_backup(project: dict) -> BackupResult:
     """Ejecuta un pg_dump -Fc de un proyecto dado como dict de services.projects.
 
@@ -73,6 +88,11 @@ def run_backup(project: dict) -> BackupResult:
     slug = project["slug"]
     conn_str = project["connection_plain"]
     dest_dir, dest = backup_path_for(slug)
+
+    ok_space, space_detail = _disk_has_enough_space(dest_dir)
+    if not ok_space:
+        logger.error("Backup '%s' abortado: %s", slug, space_detail)
+        return BackupResult(ok=False, detalle=space_detail, duracion_seg=time.monotonic() - start)
 
     args = [
         _pg_dump_binary(),
