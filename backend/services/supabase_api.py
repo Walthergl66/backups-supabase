@@ -8,6 +8,9 @@ oficial de Supabase. Todas las funciones son bloqueantes (usar con
 from __future__ import annotations
 
 import logging
+import shutil
+import subprocess
+from urllib.parse import quote, urlparse, urlunparse
 
 import httpx
 
@@ -56,10 +59,17 @@ def list_projects(pat: str) -> list[dict]:
     ]
 
 
-def get_connection_string(pat: str, project_ref: str) -> str | None:
+def get_connection_string(
+    pat: str,
+    project_ref: str,
+    mode: str = "session",
+    password: str | None = None,
+) -> str | None:
     """Obtiene la connection string (pooler) de un proyecto.
 
-    Devuelve la cadena de conexión o None si no está disponible.
+    `mode` selecciona el pooler: "session" (:5432, recomendado para pg_dump)
+    o "transaction" (:6543). Si `password` se entrega, se inyecta en la URL
+    reemplazando el marcador [YOUR-PASSWORD]. Devuelve la cadena o None.
     """
     headers = {"Authorization": f"Bearer {pat}", "Accept": "application/json"}
     try:
@@ -73,13 +83,85 @@ def get_connection_string(pat: str, project_ref: str) -> str | None:
         return None
     if resp.status_code == 200:
         poolers = resp.json()
-        for pooler in poolers:
-            if pooler.get("database_type") == "PRIMARY":
-                return pooler.get("connection_string") or pooler.get("connectionString")
-        if poolers:
-            return poolers[0].get("connection_string") or poolers[0].get("connectionString")
+        pooler = _pick_pooler(poolers, mode)
+        if pooler is not None:
+            raw = pooler.get("connection_string") or pooler.get("connectionString") or ""
+            if raw:
+                return _inject_password(raw, password)
     logger.warning(
         "No se pudo obtener connection string para %s: HTTP %s",
         project_ref, resp.status_code,
     )
     return None
+
+
+def _pick_pooler(poolers: list[dict], mode: str) -> dict | None:
+    """Elige la entrada del pooler que coincide con el modo pedido.
+
+    La respuesta de Supabase es una lista de poolers (PRIMARY/REPLICA, con
+    modo session/transaction). Si no hay coincidencia exacta se usa el
+    primero con database_type PRIMARY; si nada, el primero.
+    """
+    wanted = mode.lower()
+    for p in poolers:
+        pool_mode = str(p.get("pool_mode") or p.get("mode") or "").lower()
+        if pool_mode == wanted and p.get("database_type") == "PRIMARY":
+            return p
+    for p in poolers:
+        pool_mode = str(p.get("pool_mode") or p.get("mode") or "").lower()
+        if pool_mode == wanted:
+            return p
+    for p in poolers:
+        if p.get("database_type") == "PRIMARY":
+            return p
+    return poolers[0] if poolers else None
+
+
+def _inject_password(connection: str, password: str | None) -> str:
+    """Inserta la contraseña (URL-encoded) en la connection string.
+
+    Reemplaza el marcador `[YOUR-PASSWORD]` que devuelve Supabase, o si la
+    URL ya trae un userinfo, reemplaza la contraseña existente.
+    """
+    if not password:
+        return connection
+    encoded = quote(password, safe="")
+    if "[YOUR-PASSWORD]" in connection:
+        return connection.replace("[YOUR-PASSWORD]", encoded)
+    parsed = urlparse(connection)
+    if parsed.hostname is None:
+        return connection
+    user = parsed.username or "postgres"
+    host = parsed.hostname
+    netloc = f"{user}:{encoded}@{host}"
+    if parsed.port:
+        netloc += f":{parsed.port}"
+    return urlunparse(
+        (parsed.scheme, netloc, parsed.path, parsed.params, parsed.query, parsed.fragment)
+    )
+
+
+def test_connection(connection: str, timeout: int = 15) -> tuple[bool, str]:
+    """Prueba la cadena contra el pooler con `psql` (SELECT 1).
+
+    Devuelve (ok, detalle). Si psql no está disponible la verificación se
+    omite (no es un fallo del proyecto).
+    """
+    if shutil.which("psql") is None:
+        return True, "verificación omitida (psql no está instalado)"
+    try:
+        proc = subprocess.run(
+            ["psql", connection, "-tA", "-c", "SELECT 1"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
+            check=False,
+        )
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        return False, sanitize.redact_secrets(str(exc))
+    if proc.returncode == 0:
+        return True, (proc.stdout or "").strip()
+    tail = sanitize.redact_secrets("\n".join((proc.stderr or "").splitlines()[-5:]))
+    return False, tail or "psql no pudo conectar."

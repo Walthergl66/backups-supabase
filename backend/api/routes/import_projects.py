@@ -48,6 +48,12 @@ async def create_imported_projects(request: Request, admin: dict = Depends(requi
     account_name = (data.get("account_name") or "").strip()
     tg_nombre = (data.get("telegram_nombre") or "").strip()
     tg_rol = data.get("telegram_rol") or "usuario"
+    db_password = (data.get("db_password") or "").strip() or None
+    pooler_mode = (data.get("pooler_mode") or "session").strip().lower()
+    test_connection = bool(data.get("test_connection"))
+
+    if pooler_mode not in ("session", "transaction"):
+        pooler_mode = "session"
 
     try:
         tg_chat = int(data.get("telegram_chat_id") or 0)
@@ -88,12 +94,20 @@ async def create_imported_projects(request: Request, admin: dict = Depends(requi
             errors.append(f"Proyecto {ref[:8]}... no encontrado")
             continue
         try:
-            connection = await asyncio.to_thread(api_srv.get_connection_string, pat, ref)
+            connection = await asyncio.to_thread(
+                api_srv.get_connection_string, pat, ref, pooler_mode, db_password
+            )
         except Exception:
             connection = None
         if not connection:
             errors.append(f"{project_data['name']}: no se pudo obtener la connection string")
             continue
+
+        if test_connection:
+            ok_test, detail_test = await asyncio.to_thread(api_srv.test_connection, connection)
+            if not ok_test:
+                errors.append(f"{project_data['name']}: conexión fallida — {detail_test}")
+                continue
         slug = project_data["name"].lower().replace(" ", "-").replace("_", "-")[:30]
         try:
             pid = projects_srv.create_project(

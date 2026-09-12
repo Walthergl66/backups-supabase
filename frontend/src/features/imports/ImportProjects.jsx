@@ -17,6 +17,9 @@ export default function ImportProjects() {
   const [tgRol, setTgRol] = useState('usuario')
   const [canBackup, setCanBackup] = useState(true)
   const [canMonitor, setCanMonitor] = useState(true)
+  const [dbPassword, setDbPassword] = useState('')
+  const [poolerMode, setPoolerMode] = useState('session')
+  const [testConnection, setTestConnection] = useState(true)
 
   const [result, setResult] = useState(null)
   const [creating, setCreating] = useState(false)
@@ -59,6 +62,9 @@ export default function ImportProjects() {
         telegram_rol: tgRol,
         can_backup: canBackup,
         can_monitor: canMonitor,
+        db_password: dbPassword,
+        pooler_mode: poolerMode,
+        test_connection: testConnection,
       })
       setResult(d)
     } catch (err) {
@@ -131,7 +137,35 @@ export default function ImportProjects() {
             </div>
           </div>
 
-          <div className="card-head"><span className="card-title">3 · Usuario de Telegram</span></div>
+          <div className="card-head"><span className="card-title">3 · Conexión por pooler</span></div>
+          <div className="card-body">
+            <div className="form-grid">
+              <div className="field">
+                <label className="label">Contraseña de la base de datos</label>
+                <input className="input mono" type="password" value={dbPassword} onChange={(e) => setDbPassword(e.target.value)}
+                  placeholder="[YOUR-PASSWORD]" autoComplete="off" />
+                <div className="hint">
+                  Opcional. Se inyecta automáticamente en la connection string del pooler de cada proyecto
+                  (reemplaza el marcador [YOUR-PASSWORD]). Si no la pones aquí, tendrás que configurarla luego.
+                </div>
+              </div>
+              <div className="field">
+                <label className="label">Modo del pooler</label>
+                <select className="select" value={poolerMode} onChange={(e) => setPoolerMode(e.target.value)}>
+                  <option value="session">Session (:5432) — recomendado para pg_dump</option>
+                  <option value="transaction">Transaction (:6543)</option>
+                </select>
+              </div>
+              <div className="field" style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 4 }}>
+                <label className="check">
+                  <input type="checkbox" checked={testConnection} onChange={(e) => setTestConnection(e.target.checked)} />
+                  Probar conexión antes de importar
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div className="card-head"><span className="card-title">4 · Usuario de Telegram</span></div>
           <div className="card-body">
             <div className="form-grid">
               <div className="field">

@@ -98,6 +98,12 @@ El panel queda disponible en `http://localhost:8080`.
   los proyectos y en el mismo paso registra tu **usuario de Telegram**
   (nombre + `chat_id`). Al confirmar se crea la cuenta, los proyectos y el
   usuario con permisos sobre los proyectos importados.
+  - La conexión se toma **automáticamente por pooler** desde la Management API
+    (el PAT debe incluir el permiso `database_pooling_config_read`). Usa el
+    **modo session (`:5432`)**, recomendado para `pg_dump`. Si te pide la **contraseña de la
+    base de datos**, la inyecta en la connection string de cada proyecto
+    (en vez del marcador `[YOUR-PASSWORD]`) y puede **probar la conexión**
+    antes de guardar. La clave se cifra en reposo con `ENCRYPTION_KEY`.
   - ¿Cómo saber tu `chat_id`? Márcale `/id` al bot en Telegram y te lo responde
     en el propio chat (alternativa a los logs).
   - Si prefieres, puedes crear cuentas y proyectos manualmente (CRUD en
