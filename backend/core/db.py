@@ -43,6 +43,8 @@ def _migrate() -> None:
         "ALTER TABLE web_users ADD COLUMN locked_until TEXT",
         "ALTER TABLE projects ADD COLUMN schedule TEXT",
         "ALTER TABLE projects ADD COLUMN archived INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE web_users ADD COLUMN totp_secret TEXT",
+        "ALTER TABLE web_users ADD COLUMN totp_enabled INTEGER NOT NULL DEFAULT 0",
     ]
     with connect() as conn:
         for statement in statements:

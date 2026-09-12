@@ -8,6 +8,8 @@ export default function Login() {
   const { login } = useAuth()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [code, setCode] = useState('')
+  const [totpPending, setTotpPending] = useState(false)
   const [error, setError] = useState('')
   const [sending, setSending] = useState(false)
   const navigate = useNavigate()
@@ -17,13 +19,25 @@ export default function Login() {
     setError('')
     setSending(true)
     try {
-      await login(username, password)
+      await login(username, password, totpPending ? code : undefined)
       navigate('/', { replace: true })
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Error inesperado')
+      if (err instanceof ApiError && err.data?.totp_required) {
+        setTotpPending(true)
+        setCode('')
+        setError('Ingresa el código de tu aplicación de autenticación.')
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Error inesperado')
+      }
     } finally {
       setSending(false)
     }
+  }
+
+  const resetTotp = () => {
+    setTotpPending(false)
+    setCode('')
+    setError('')
   }
 
   return (
@@ -38,28 +52,55 @@ export default function Login() {
         {error && <Flash type="err">{error}</Flash>}
 
         <form onSubmit={submit}>
-          <div className="field">
-            <label className="label">Usuario</label>
-            <input
-              className="input"
-              autoFocus
-              autoComplete="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-            />
-          </div>
-          <div className="field">
-            <label className="label">Contraseña</label>
-            <input
-              className="input"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
-          <button className="btn btn-primary btn-block" disabled={sending || !username || !password}>
-            {sending ? 'Ingresando…' : 'Ingresar'}
+          {!totpPending ? (
+            <>
+              <div className="field">
+                <label className="label">Usuario</label>
+                <input
+                  className="input"
+                  autoFocus
+                  autoComplete="username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                />
+              </div>
+              <div className="field">
+                <label className="label">Contraseña</label>
+                <input
+                  className="input"
+                  type="password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="field">
+                <label className="label">Código 2FA</label>
+                <input
+                  className="input"
+                  autoFocus
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  autoComplete="one-time-code"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                />
+              </div>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={resetTotp}
+                style={{ marginBottom: 12 }}
+              >
+                Iniciar con otro usuario
+              </button>
+            </>
+          )}
+          <button className="btn btn-primary btn-block" disabled={sending || !username || !password || (totpPending && !code)}>
+            {sending ? 'Ingresando…' : totpPending ? 'Verificar' : 'Ingresar'}
           </button>
         </form>
       </div>

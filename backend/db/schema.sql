@@ -74,7 +74,9 @@ CREATE TABLE web_users (
     created_at    TEXT NOT NULL DEFAULT (datetime('now')),
     activo        INTEGER NOT NULL DEFAULT 1,
     failed_attempts INTEGER NOT NULL DEFAULT 0,     -- intentos de login fallidos
-    locked_until    TEXT                            -- cuándo se desbloquea la cuenta (ISO)
+    locked_until    TEXT,                           -- cuándo se desbloquea la cuenta (ISO)
+    totp_secret   TEXT,                             -- secreto TOTP (base32)
+    totp_enabled  INTEGER NOT NULL DEFAULT 0        -- 1 = 2FA activo
 );
 
 -- ------------------------------------------------------------------

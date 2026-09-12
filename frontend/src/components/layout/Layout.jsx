@@ -11,6 +11,7 @@ const icons = {
   tg: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 4L3 11l6 2 2 6 3-4 5 3L21 4z"/><path d="M9 13l9-7"/></svg>,
   web: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="3.5"/><path d="M5 21c.5-3.5 3-5.5 7-5.5s6.5 2 7 5.5"/></svg>,
   audit: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>,
+  sec: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>,
 }
 
 const groups = [
@@ -33,7 +34,10 @@ const groups = [
   },
   {
     group: 'Registro',
-    items: [{ to: '/auditoria', label: 'Bitácora', icon: icons.audit }],
+    items: [
+      { to: '/auditoria', label: 'Bitácora', icon: icons.audit },
+      { to: '/seguridad', label: 'Seguridad', icon: icons.sec },
+    ],
   },
 ]
 
@@ -45,6 +49,7 @@ const sectionLabels = [
   ['/usuarios-web', 'Usuarios del panel'],
   ['/usuarios', 'Usuarios de Telegram'],
   ['/auditoria', 'Bitácora'],
+  ['/seguridad', 'Seguridad'],
 ]
 
 // Rutas reservadas al rol admin (viewer solo monitorea).

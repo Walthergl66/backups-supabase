@@ -17,8 +17,8 @@ export function AuthProvider({ children }) {
       .finally(() => setLoading(false))
   }, [])
 
-  const login = async (username, password) => {
-    const data = await authService.login(username, password)
+  const login = async (username, password, code) => {
+    const data = await authService.login(username, password, code)
     setToken(data.access_token)
     setUser(data.user)
     return data.user

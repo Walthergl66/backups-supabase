@@ -14,9 +14,10 @@ export function clearToken() {
 }
 
 export class ApiError extends Error {
-  constructor(message, status = 0) {
+  constructor(message, status = 0, data = null) {
     super(message)
     this.status = status
+    this.data = data
   }
 }
 
@@ -61,7 +62,7 @@ async function request(path, options = {}) {
     credentials: options.credentials || 'include',
   })
 
-  if (res.status === 401 && !options._retried && path !== REFRESH_PATH) {
+  if (res.status === 401 && !options._retried && path !== REFRESH_PATH && path !== '/api/auth/login') {
     try {
       await refreshAccessToken()
       return request(path, { ...options, _retried: true })
@@ -71,7 +72,7 @@ async function request(path, options = {}) {
     }
   }
 
-  if (res.status === 401 && path !== REFRESH_PATH) {
+  if (res.status === 401 && path !== REFRESH_PATH && path !== '/api/auth/login') {
     await redirectToLogin()
     throw new ApiError('Sesión expirada', 401)
   }
@@ -85,7 +86,7 @@ async function request(path, options = {}) {
 
   if (!res.ok) {
     const detail = data?.detail || `Error HTTP ${res.status}`
-    throw new ApiError(typeof detail === 'string' ? detail : JSON.stringify(detail), res.status)
+    throw new ApiError(typeof detail === 'string' ? detail : JSON.stringify(detail), res.status, data)
   }
   return data
 }

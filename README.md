@@ -240,5 +240,9 @@ incidentes están en **[`docs/DEPLOY_MODELO_A.md`](docs/DEPLOY_MODELO_A.md)**.
   cliente externo no se tiene en cuenta.
 - Las notificaciones son exclusivamente por Telegram: no se ha configurado el
   canal de correo (Resend) a petición del cliente.
+- **2FA (TOTP)**: cada usuario del panel puede activar verificación en dos
+  pasos desde **Seguridad** (menú lateral): el login pedirá además un código de
+  6 dígitos de su app de autenticación. Disponible en `web_users.totp_enabled`;
+  el alta/desactivación quedan registrados en la bitácora.
 - El diseño de `permissions` y `audit_log` deja lista una futura Fase 2 con
   autorregistro de usuarios, límites de uso y filtrado por proyecto.

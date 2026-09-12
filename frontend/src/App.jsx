@@ -16,6 +16,7 @@ import WebUserForm from './features/web-users/WebUserForm.jsx'
 import Backups from './features/backups/Backups.jsx'
 import Audit from './features/audit/Audit.jsx'
 import ImportProjects from './features/imports/ImportProjects.jsx'
+import Security from './features/security/Security.jsx'
 
 export default function App() {
   return (
@@ -47,6 +48,7 @@ export default function App() {
         </Route>
         <Route path="/backups" element={<Backups />} />
         <Route path="/auditoria" element={<Audit />} />
+        <Route path="/seguridad" element={<Security />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

@@ -16,6 +16,18 @@ os.environ.setdefault("SESSION_SECRET", "test-session-secret")
 import pytest  # noqa: E402
 
 
+@pytest.fixture(autouse=True)
+def _reset_rate_limit():
+    """Limpia el almacén de rate-limit tras cada test (evita 429 entre tests)."""
+    from api.rate_limit import limiter
+
+    yield
+    try:
+        limiter._storage.reset()
+    except Exception:  # noqa: BLE001
+        pass
+
+
 @pytest.fixture()
 def db(tmp_path, monkeypatch):
     """Resetea settings y apunta DB/BACKUP a un directorio temporal nuevo."""
