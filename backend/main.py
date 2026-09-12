@@ -22,6 +22,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 from api.app import create_app
 from backup import cleanup as cleanup_mod
+from backup import offsite as offsite_mod
 from backup import scheduler_jobs
 from backup import self_backup as self_backup_mod
 from bot import build_application, run_bot_forever
@@ -232,6 +233,17 @@ async def main() -> None:
             )
         except Exception as exc:  # noqa: BLE001
             log.error("No se pudo alertar del barrido de claros: %s", exc)
+
+    if cfg.offsite_enabled:
+        try:
+            offsite = await asyncio.to_thread(offsite_mod.sync_new_backups)
+            log.info(
+                "Copia off-site al arranque: %d subido(s), %d en remoto, %d borrado(s) "
+                "(errores: %d)",
+                offsite["uploaded"], offsite["skipped"], offsite["deleted"], len(offsite["errors"]),
+            )
+        except Exception as exc:  # noqa: BLE001
+            log.error("Copia off-site al arranque falló: %s", exc)
 
     app = create_app()
     bot_app = build_application()
