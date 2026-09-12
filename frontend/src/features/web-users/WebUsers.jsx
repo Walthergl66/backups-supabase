@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { deleteWebUser, listWebUsers } from '../../services/webUsers.js'
+import { fmtFechaDate } from '../../utils/format.js'
 import PageHead from '../../components/ui/PageHead.jsx'
 import Flash from '../../components/ui/Flash.jsx'
 import Badge from '../../components/ui/Badge.jsx'
@@ -50,7 +51,7 @@ export default function WebUsers() {
                     <span className={`chip ${u.rol === 'admin' ? 'chip-admin' : 'chip-viewer'}`}>{u.rol === 'admin' ? 'Administrador' : 'Solo lectura'}</span>
                   </td>
                   <td>{u.activo ? <Badge tone="ok">Activo</Badge> : <Badge tone="mid">Inactivo</Badge>}</td>
-                  <td className="muted">{new Date(u.created_at).toLocaleDateString('es')}</td>
+                  <td className="muted">{fmtFechaDate(u.created_at)}</td>
                   <td className="td-actions">
                     <Link className="btn-link" to={`/usuarios-web/${u.id}/editar`}>Editar</Link>
                     <button className="btn-link btn-link-danger" onClick={() => del(u)}>Eliminar</button>

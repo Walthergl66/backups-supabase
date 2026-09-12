@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { listAudit } from '../../services/audit.js'
+import { fmtFecha } from '../../utils/format.js'
 import PageHead from '../../components/ui/PageHead.jsx'
 import Flash from '../../components/ui/Flash.jsx'
 import Badge from '../../components/ui/Badge.jsx'
@@ -29,7 +30,7 @@ export default function Audit() {
             <tbody>
               {rows.map((a) => (
                 <tr key={a.id}>
-                  <td className="muted">{new Date(a.fecha).toLocaleString('es')}</td>
+                  <td className="muted">{fmtFecha(a.fecha)}</td>
                   <td style={{ fontSize: 12 }}>{a.origen}</td>
                   <td className="mono">{a.accion}</td>
                   <td>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getProjectHistory } from '../../services/projects.js'
-import { fmtBytes } from '../../utils/format.js'
+import { fmtBytes, fmtFecha } from '../../utils/format.js'
 import PageHead from '../../components/ui/PageHead.jsx'
 import Flash from '../../components/ui/Flash.jsx'
 import Badge from '../../components/ui/Badge.jsx'
@@ -48,7 +48,7 @@ export default function ProjectHistory() {
             <tbody>
               {(data.rows || []).map((r) => (
                 <tr key={r.id}>
-                  <td className="muted">{new Date(r.fecha).toLocaleString('es')}</td>
+                  <td className="muted">{fmtFecha(r.fecha)}</td>
                   <td>
                     {r.resultado === 'ok' ? (
                       <Badge tone="ok">OK</Badge>

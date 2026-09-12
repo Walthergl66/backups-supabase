@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getDashboard } from '../../services/dashboard.js'
+import { fmtFecha } from '../../utils/format.js'
 import PageHead from '../../components/ui/PageHead.jsx'
 import Flash from '../../components/ui/Flash.jsx'
 import Badge from '../../components/ui/Badge.jsx'
@@ -68,7 +69,7 @@ export default function Dashboard() {
                         <Link className="btn-link" to={`/proyectos/${p.id}/historial`}>{p.slug}</Link>
                         <div className="muted" style={{ fontSize: 11 }}>{p.nombre}</div>
                       </td>
-                      <td className="muted">{ultimo ? new Date(ultimo).toLocaleString('es') : 'Sin backups'}</td>
+                      <td className="muted">{ultimo ? fmtFecha(ultimo) : 'Sin backups'}</td>
                       <td className="mono">-</td>
                       <td>
                         {!ultimo ? (
@@ -99,7 +100,7 @@ export default function Dashboard() {
               <tbody>
                 {(data.recent_audit || []).map((a) => (
                   <tr key={a.id}>
-                    <td className="muted">{new Date(a.fecha).toLocaleString('es')}</td>
+                    <td className="muted">{fmtFecha(a.fecha)}</td>
                     <td>
                       <Badge tone={a.resultado === 'ok' ? 'ok' : 'err'}>{a.resultado}</Badge>
                       <div style={{ fontSize: 12 }} className="mono">{a.accion}</div>

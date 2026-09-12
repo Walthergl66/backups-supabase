@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { deleteAccount, listAccounts } from '../../services/accounts.js'
+import { fmtFechaDate } from '../../utils/format.js'
 import PageHead from '../../components/ui/PageHead.jsx'
 import Flash from '../../components/ui/Flash.jsx'
 import Badge from '../../components/ui/Badge.jsx'
@@ -45,7 +46,7 @@ export default function Accounts() {
                   <td>{a.nombre}</td>
                   <td className="mono muted">{a.pat_masked}</td>
                   <td>{a.activo ? <Badge tone="ok">Activa</Badge> : <Badge tone="mid">Inactiva</Badge>}</td>
-                  <td className="muted">{new Date(a.created_at).toLocaleDateString('es')}</td>
+                  <td className="muted">{fmtFechaDate(a.created_at)}</td>
                   <td className="td-actions">
                     <Link className="btn-link" to={`/cuentas/${a.id}/editar`}>Editar</Link>
                     <button className="btn-link btn-link-danger" onClick={() => del(a)}>Eliminar</button>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { listBackups } from '../../services/backups.js'
-import { fmtBytes } from '../../utils/format.js'
+import { fmtBytes, fmtFecha } from '../../utils/format.js'
 import PageHead from '../../components/ui/PageHead.jsx'
 import Flash from '../../components/ui/Flash.jsx'
 import Badge from '../../components/ui/Badge.jsx'
@@ -30,7 +30,7 @@ export default function Backups() {
             <tbody>
               {(data.rows || []).map((r) => (
                 <tr key={r.id}>
-                  <td className="muted">{new Date(r.fecha).toLocaleString('es')}</td>
+                  <td className="muted">{fmtFecha(r.fecha)}</td>
                   <td>
                     <Link className="btn-link" to={`/proyectos/${r.project_id}/historial`}>{r.slug}</Link>
                   </td>
