@@ -54,7 +54,6 @@ class Settings:
         self.web_admin_password: str = os.getenv("WEB_ADMIN_PASSWORD", "")
 
         self.session_secret: str = self._required("SESSION_SECRET")
-        self.csrf_secret: str = self._required("CSRF_SECRET")
 
         self.db_path: Path = Path(os.getenv("DB_PATH", str(PROJECT_ROOT / "data" / "backups.db")))
         self.backup_dir: Path = Path(os.getenv("BACKUP_DIR", str(PROJECT_ROOT / "data" / "backups")))
