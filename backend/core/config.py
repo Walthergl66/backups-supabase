@@ -78,6 +78,11 @@ class Settings:
 
         self.log_level: str = os.getenv("LOG_LEVEL", "INFO").strip().upper()
 
+        # Resumen diario de salud por Telegram.
+        self.daily_summary_enabled: bool = os.getenv("DAILY_SUMMARY_ENABLED", "on").strip().lower() in ("1", "true", "yes", "on")
+        self.daily_summary_time: str = os.getenv("DAILY_SUMMARY_TIME", "08:00")
+        self.daily_summary_tz: str = os.getenv("DAILY_SUMMARY_TZ", "UTC")
+
     @staticmethod
     def _required(name: str) -> str:
         value = os.getenv(name, "").strip()

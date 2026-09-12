@@ -200,6 +200,7 @@ docker compose up -d             # volver a arrancar
 | `BACKUP_MIN_FREE_MB` | Espacio libre mínimo en disco (MiB) exigido antes de un backup (default 1024; si hay menos, se aborta y se avisa) |
 | `BACKUP_COOLDOWN_SECONDS` | Cooldown entre `/backup` del mismo chat en el bot de Telegram (default 30; se evita llenar el disco con peticiones repetidas) |
 | `AUDIT_RETENTION_DAYS` / `HISTORY_RETENTION_DAYS` | Días que se conservan las entradas de auditoría y del historial de backups antes de la purga automática (default 365; se purga cada lunes 04:00 UTC) |
+| `DAILY_SUMMARY_ENABLED` / `TIME` / `TZ` | Resumen diario por Telegram con el estado de cada proyecto y alerta si alguno lleva >26 h sin un backup OK (default `on` 08:00 UTC; sin actividades, no se envía) |
 | `WEB_HOST` / `WEB_PORT` | API interna del backend (default `0.0.0.0:8080`) |
 | `CORS_ALLOW_ORIGINS` | Orígenes permitidos al API, separados por coma (default localhost/127.0.0.1:8080) |
 | `WEB_DOCS_ENABLED` | Sirve o no Swagger/ReDoc/OpenAPI (default `false`; en producción mantener desactivado) |

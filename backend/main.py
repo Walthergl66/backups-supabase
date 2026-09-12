@@ -29,9 +29,15 @@ from core import db as db_core
 from core import sanitize
 from core.config import settings
 from notify import telegram as notify_mod
+from notify.daily_summary import send_daily_summary as _send_daily_summary
 from services import audit as audit_srv
 from services import backup_history as history_srv
 from services import web_users as web_users_srv
+
+
+def _split_time(value: str) -> tuple[int, int]:
+    hora, minuto = value.split(":")
+    return int(hora), int(minuto)
 
 
 def _setup_logging() -> None:
@@ -108,6 +114,23 @@ async def retention_purge_job(log: logging.Logger) -> None:
         log.exception("Falló la purga de retención de logs")
 
 
+async def daily_summary_job(log: logging.Logger) -> None:
+    """Resumen diario de salud de los backups por Telegram."""
+    if not settings().daily_summary_enabled:
+        return
+    try:
+        await asyncio.to_thread(_send_daily_summary)
+        log.info("Resumen diario enviado a los admins.")
+    except Exception as exc:  # noqa: BLE001
+        log.exception("Falló el resumen diario por Telegram")
+        try:
+            await notify_mod.notify_admins(
+                f"⚠️ Falló el resumen diario de backups: {sanitize.redact_secrets(str(exc))}"
+            )
+        except Exception as notify_exc:  # noqa: BLE001
+            log.error("Y además falló la alerta por Telegram: %s", notify_exc)
+
+
 async def daily_self_backup_job(log: logging.Logger) -> None:
     """Self-backup diario de la base del panel + envío a Telegram (opcional)."""
     try:
@@ -168,6 +191,24 @@ def setup_scheduler(log: logging.Logger) -> AsyncIOScheduler:
         "Purga semanal de logs programada (lunes 04:00 %s): audit=%d días, history=%d días",
         tzinfo, settings().audit_retention_days, settings().history_retention_days,
     )
+
+    if cfg.daily_summary_enabled:
+        try:
+            summary_hour, summary_min = _split_time(cfg.daily_summary_time)
+        except Exception:  # noqa: BLE001 - formato inválido: se cae a 08:00
+            summary_hour, summary_min = 8, 0
+        scheduler.add_job(
+            daily_summary_job,
+            CronTrigger(hour=summary_hour, minute=summary_min, timezone=tzinfo),
+            args=[log],
+            id="daily_summary",
+            misfire_grace_time=3600,
+            coalesce=True,
+        )
+        log.info(
+            "Resumen diario por Telegram programado a las %02d:%02d (%s)",
+            summary_hour, summary_min, tzinfo,
+        )
     return scheduler
 
 
