@@ -80,3 +80,26 @@ async def notify_admins(text: str) -> None:
                                    disable_web_page_preview=True)
         except Exception as exc:  # noqa: BLE001
             logger.error("No se pudo notificar alerta al chat %s: %s", chat_id, exc)
+
+
+async def notify_admins_document(filename: str, data: bytes, caption: str = "") -> None:
+    """Envía un documento (bytes) a todos los admins de Telegram."""
+    from core.config import settings
+    from services import users as users_srv
+
+    admins = users_srv.list_admin_chat_ids()
+    if not admins:
+        logger.info("Documento sin destinatarios (no hay admins de Telegram): %s", filename)
+        return
+    bot = Bot(token=settings().bot_token)
+    import io
+    for chat_id in admins:
+        try:
+            await bot.send_document(
+                chat_id=chat_id,
+                document=io.BytesIO(data),
+                filename=filename,
+                caption=caption,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.error("No se pudo enviar documento de alerta al chat %s: %s", chat_id, exc)
