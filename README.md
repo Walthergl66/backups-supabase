@@ -217,6 +217,12 @@ docker compose up -d             # volver a arrancar
 | `SELF_BACKUP_TZ` | Zona horaria de `SELF_BACKUP_TIME` (default `UTC`) |
 | `SELF_BACKUP_TELEGRAM` | Envía el self-backup más reciente a los admins por Telegram (`on`/`off`, default `on`) |
 
+## Despliegue y mantenimiento (Modelo A)
+
+Despliegue de la copia privada en una **VM Oracle Free con acceso solo por
+Tailscale**, el vault de claves (`pass`/`sops`) y el runbook de operaciones e
+incidentes están en **[`docs/DEPLOY_MODELO_A.md`](docs/DEPLOY_MODELO_A.md)**.
+
 ## Notas
 
 - Los backups de proyectos son **bajo demanda** (por Telegram) o **programados**:
