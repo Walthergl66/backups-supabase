@@ -16,8 +16,10 @@ from fastapi.responses import JSONResponse
 from api.deps import get_current_user
 from api.rate_limit import limiter
 from core.config import settings
+from core import jwt
 from core.jwt import create_token
 from notify import telegram as notify_mod
+from services import access_blacklist
 from services import audit as audit_srv
 from services import refresh_tokens
 from services import web_users as web_users_srv
@@ -134,6 +136,17 @@ async def logout(request: Request):
     raw = request.cookies.get(_REFRESH_COOKIE)
     if raw:
         refresh_tokens.refresh_store.revoke(raw)
+    # Invalida también el access token presente (si lo hay) en el header.
+    authorization = request.headers.get("Authorization", "")
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() == "bearer" and token.strip():
+        try:
+            claims = jwt.decode_token(token.strip())
+        except jwt.InvalidToken:
+            pass
+        else:
+            if claims.get("jti"):
+                access_blacklist.blacklist.revoke(claims["jti"], int(claims.get("exp", 0)))
     response = JSONResponse({"ok": True})
     response.delete_cookie(_REFRESH_COOKIE, path="/api/auth")
     return response

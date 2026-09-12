@@ -52,6 +52,7 @@ def create_token(user: dict, ttl: int | None = None) -> str:
         "sub": str(user["id"]),
         "username": user["username"],
         "rol": user["rol"],
+        "jti": secrets.token_urlsafe(12),
         "iat": now,
         "exp": now + (ttl or settings().jwt_ttl_seconds),
     }
