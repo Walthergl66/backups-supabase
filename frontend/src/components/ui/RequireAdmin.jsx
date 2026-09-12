@@ -1,8 +1,8 @@
-import { Navigate } from 'react-router-dom'
+import { Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '../../features/auth/AuthContext.jsx'
 
-export default function RequireAdmin({ children }) {
+export default function RequireAdmin() {
   const { user } = useAuth()
   if (!user || user.rol !== 'admin') return <Navigate to="/" replace />
-  return children
+  return <Outlet />
 }
