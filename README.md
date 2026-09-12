@@ -194,11 +194,17 @@ docker compose up -d             # volver a arrancar
 | `THROTTLE_MAX_REQUESTS` | Peticiones máximas hacia `/api/*` por IP antes de bloquear (default 120/ventana; mini-WAF A5) |
 | `THROTTLE_WINDOW_SECONDS` | Ventana del mini-WAF (default 60) |
 | `THROTTLE_BLOCK_SECONDS` | Duración del bloqueo por IP (default 120) |
+| `SELF_BACKUP_DIR` | Carpeta del self-backup de la BD del panel (default `<BACKUP_DIR>/self`) |
+| `SELF_BACKUP_KEEP_COUNT` | Rotación de self-backups a conservar (default 10) |
+| `SELF_BACKUP_TIME` | Hora diaria `HH:MM` del self-backup en la zona de `SELF_BACKUP_TZ` (default `03:00`) |
+| `SELF_BACKUP_TZ` | Zona horaria de `SELF_BACKUP_TIME` (default `UTC`) |
+| `SELF_BACKUP_TELEGRAM` | Envía el self-backup más reciente a los admins por Telegram (`on`/`off`, default `on`) |
 
 ## Notas
 
-- Los backups son **solo bajo demanda** (por Telegram). No hay cron/crontab en
-  esta versión.
+- Los backups de proyectos son **bajo demanda** (por Telegram); el **self-backup
+  de la base del panel** es automático (diario a `SELF_BACKUP_TIME`, además de
+  uno inicial al primer arranque).
 - Las notificaciones son exclusivamente por Telegram: no se ha configurado el
   canal de correo (Resend) a petición del cliente.
 - El diseño de `permissions` y `audit_log` deja lista una futura Fase 2 con
