@@ -5,21 +5,25 @@ import { fmtBytes, fmtFecha } from '../../utils/format.js'
 import PageHead from '../../components/ui/PageHead.jsx'
 import Flash from '../../components/ui/Flash.jsx'
 import Badge from '../../components/ui/Badge.jsx'
+import Pager from '../../components/ui/Pager.jsx'
+
+const PAGE_SIZE = 50
 
 export default function Backups() {
   const [data, setData] = useState(null)
+  const [page, setPage] = useState(1)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    listBackups().then(setData).catch((e) => setError(e.message))
-  }, [])
+    listBackups(page, PAGE_SIZE).then(setData).catch((e) => setError(e.message))
+  }, [page])
 
   if (error) return <Flash type="err">{error}</Flash>
   if (!data) return <div className="muted">Cargando…</div>
 
   return (
     <>
-      <PageHead title="Backups" sub={`${data.total} registros · se muestran los últimos ${data.rows.length}.`} />
+      <PageHead title="Backups" sub={`${data.total} registros · se muestran de la página ${data.page}.`} />
 
       <div className="card">
         <div className="table-scroll">
@@ -51,6 +55,7 @@ export default function Backups() {
             </tbody>
           </table>
         </div>
+        <Pager page={data.page} pages={data.pages} total={data.total} onChange={setPage} />
       </div>
     </>
   )

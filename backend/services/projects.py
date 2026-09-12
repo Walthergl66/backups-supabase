@@ -3,12 +3,19 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 
 from apscheduler.triggers.cron import CronTrigger
 
 from core import db, crypto
 
 _SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
+
+
+def slugify(text: str) -> str:
+    """Normaliza un texto a un slug ascii en minúsculas (a-z, 0-9, guiones)."""
+    folded = unicodedata.normalize("NFKD", text or "").encode("ascii", "ignore").decode("ascii")
+    return re.sub(r"[^a-z0-9]+", "-", folded.lower()).strip("-")
 
 
 class ProjectError(Exception):
@@ -79,6 +86,8 @@ def create_project(slug: str, nombre: str, account_id: int, connection: str, pro
     connection = connection.strip()
     project_ref = project_ref.strip()
     schedule = _validate_schedule(schedule)
+    if not slug:
+        slug = slugify(nombre)
     if not _SLUG_RE.match(slug):
         raise ProjectError(
             "Slug inválido. Usa solo minúsculas, números, guiones o guiones bajos "

@@ -457,3 +457,12 @@ table.t tr.empty td { text-align: center; color: var(--muted); padding: 40px 20p
   .card-body { padding: 18px; }
   .grid-stat { grid-template-columns: 1fr 1fr; }
 }
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border, rgba(128, 128, 128, 0.25));
+}
+.pager .btn:disabled { opacity: 0.5; cursor: not-allowed; }

@@ -4,22 +4,29 @@ import { fmtFecha } from '../../utils/format.js'
 import PageHead from '../../components/ui/PageHead.jsx'
 import Flash from '../../components/ui/Flash.jsx'
 import Badge from '../../components/ui/Badge.jsx'
+import Pager from '../../components/ui/Pager.jsx'
+
+const PAGE_SIZE = 50
 
 export default function Audit() {
-  const [rows, setRows] = useState([])
+  const [data, setData] = useState(null)
+  const [page, setPage] = useState(1)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    listAudit()
-      .then((d) => setRows(d.rows || []))
+    listAudit(page, PAGE_SIZE)
+      .then(setData)
       .catch((e) => setError(e.message))
-  }, [])
+  }, [page])
+
+  if (error) return <Flash type="err">{error}</Flash>
+  if (!data) return <div className="muted">Cargando…</div>
+
+  const rows = data.rows || []
 
   return (
     <>
-      <PageHead title="Auditoría" sub="Historial de la actividad del panel y del bot." />
-
-      {error && <Flash type="err">{error}</Flash>}
+      <PageHead title="Auditoría" sub={`Historial de la actividad del panel y del bot · ${data.total} registros.`} />
 
       <div className="card">
         <div className="table-scroll">
@@ -49,6 +56,7 @@ export default function Audit() {
             </tbody>
           </table>
         </div>
+        <Pager page={data.page} pages={data.pages} total={data.total} onChange={setPage} />
       </div>
     </>
   )

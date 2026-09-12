@@ -24,7 +24,7 @@ def log_action(
     )
 
 
-def list_audit(limit: int = 100) -> list:
+def list_audit(limit: int = 100, offset: int = 0) -> list:
     return db.fetch_all(
         """
         SELECT a.*,
@@ -36,10 +36,15 @@ def list_audit(limit: int = 100) -> list:
         LEFT JOIN web_users  w ON w.id = a.web_user_id
         LEFT JOIN projects   p ON p.id = a.project_id
         ORDER BY a.timestamp DESC, a.id DESC
-        LIMIT ?
+        LIMIT ? OFFSET ?
         """,
-        (limit,),
+        (limit, offset),
     )
+
+
+def count_audit() -> int:
+    row = db.fetch_one("SELECT COUNT(*) AS c FROM audit_log")
+    return row["c"] if row else 0
 
 
 def purge_old(days: int) -> int:
