@@ -72,29 +72,33 @@ def bootstrap_admin() -> None:
     """Crea el primer usuario web si todavía no existe ninguno.
 
     Las credenciales vienen de .env (WEB_ADMIN_USERNAME / WEB_ADMIN_PASSWORD).
-    Si el password no está definido, se genera uno aleatorio y se imprime una
-    única vez en los logs para que pueda iniciar sesión por primera vez.
+    Si el password no está definido o no cumple la política de seguridad
+    (mínimo 12 caracteres), se genera uno aleatorio y se imprime una única
+    vez en los logs para que pueda iniciar sesión por primera vez.
     """
     if web_users_srv.count_web_users() > 0:
         return
     cfg = settings()
-    password = cfg.web_admin_password or secrets.token_urlsafe(12)
-    web_users_srv.create_web_user(
-        cfg.web_admin_username or "admin", password, rol="admin"
-    )
+    username = cfg.web_admin_username or "admin"
+    password = cfg.web_admin_password or ""
+    provisional = False
+    if len(password) < web_users_srv.MIN_PASSWORD_LENGTH:
+        password = secrets.token_urlsafe(12)
+        provisional = True
+    web_users_srv.create_web_user(username, password, rol="admin")
     audit_srv.log_action(
         "web_bootstrap_admin", "ok",
-        detalle=f"se creó el usuario admin inicial '{cfg.web_admin_username or 'admin'}'",
+        detalle=f"se creó el usuario admin inicial '{username}'",
     )
-    if not cfg.web_admin_password:
-        logging.getLogger(__name__).warning(
-            "No había WEB_ADMIN_PASSWORD definido. Se generó una provisional: %s "
-            "Inicia sesión y cámbiala cuanto antes.", password
+    log = logging.getLogger(__name__)
+    if provisional:
+        log.warning(
+            "WEB_ADMIN_PASSWORD no definido o demasiado corto (mín. %d caracteres). "
+            "Se generó una provisional: %s. Inicia sesión y cámbiala cuanto antes.",
+            web_users_srv.MIN_PASSWORD_LENGTH, password,
         )
     else:
-        logging.getLogger(__name__).info(
-            "Usuario admin inicial creado con WEB_ADMIN_PASSWORD del .env."
-        )
+        log.info("Usuario admin inicial creado con WEB_ADMIN_PASSWORD del .env.")
 
 
 def retention_purge() -> dict:
