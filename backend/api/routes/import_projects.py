@@ -32,7 +32,9 @@ async def fetch_projects(request: Request, admin: dict = Depends(require_admin))
             detail=f"Error al consultar Supabase: {sanitize.redact_secrets(str(exc))}",
         ) from exc
 
-    existing_refs = {p["project_ref"] for p in projects_srv.list_projects(only_active=False)}
+    # Solo cuentan los proyectos ACTIVOS: los eliminados (archived/activo=0)
+    # liberan su ref y pueden volver a importarse.
+    existing_refs = {p["project_ref"] for p in projects_srv.list_projects(only_active=True)}
     available = [p for p in projects if p["ref"] not in existing_refs]
     return {
         "available": available,
