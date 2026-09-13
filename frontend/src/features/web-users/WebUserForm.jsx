@@ -3,12 +3,13 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { createWebUser, getWebUser, updateWebUser } from '../../services/webUsers.js'
 import { ApiError } from '../../services/http.js'
 import PageHead from '../../components/ui/PageHead.jsx'
-import Flash from '../../components/ui/Flash.jsx'
+import { useToast } from '../../components/ui/Toast.jsx'
 
 export default function WebUserForm() {
   const { id } = useParams()
   const editing = Boolean(id)
   const navigate = useNavigate()
+  const toast = useToast()
 
   const [form, setForm] = useState({ username: '', password: '', rol: 'admin', activo: true })
   const [error, setError] = useState('')
@@ -20,6 +21,11 @@ export default function WebUserForm() {
       .then((u) => setForm((f) => ({ ...f, username: u.username, rol: u.rol, activo: u.activo !== false })))
       .catch((e) => setError(e.message))
   }, [id])
+
+  useEffect(() => {
+    if (error) toast.err(error)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [error])
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
   const setChk = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.checked }))
@@ -33,12 +39,14 @@ export default function WebUserForm() {
     try {
       if (editing) {
         await updateWebUser(id, payload)
+        toast.ok('Usuario web actualizado.')
       } else {
         await createWebUser(payload)
+        toast.ok('Usuario web creado.')
       }
       navigate('/usuarios-web')
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Error inesperado')
+      toast.err(err instanceof ApiError ? err.message : 'Error inesperado')
     } finally {
       setSending(false)
     }
@@ -47,8 +55,6 @@ export default function WebUserForm() {
   return (
     <>
       <PageHead title={editing ? 'Editar usuario web' : 'Nuevo usuario web'} sub="Roles: administrar todo o solo consultar." />
-
-      {error && <Flash type="err">{error}</Flash>}
 
       <div className="card" style={{ maxWidth: 480 }}>
         <div className="card-body">
