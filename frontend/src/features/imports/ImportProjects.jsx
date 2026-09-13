@@ -103,12 +103,17 @@ export default function ImportProjects() {
         test_connection: testConnection,
       })
       setResult(d)
+      const ok = d.created > 0
+      const parcial = ok && (d.errors?.length > 0)
+      if (parcial) toast.info(resultMessage(d), 12000)
+      else if (ok) toast.ok(resultMessage(d), 9000)
+      else toast.err(resultMessage(d), 12000)
       // Si hubo algún proyecto creado, la importación es un éxito: se limpia
       // el formulario para dejar listo un nuevo ciclo. Si todo falló, se
       // conservan los valores para poder corregirlos.
       if (d.created > 0) resetForm()
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Error inesperado')
+      toast.err(err instanceof ApiError ? err.message : 'Error inesperado', 9000)
     } finally {
       setCreating(false)
     }
