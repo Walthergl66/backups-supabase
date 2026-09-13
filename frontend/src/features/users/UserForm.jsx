@@ -4,12 +4,13 @@ import { createUser, getUser, saveUserPermissions, updateUser } from '../../serv
 import { listActiveProjects } from '../../services/projects.js'
 import { ApiError } from '../../services/http.js'
 import PageHead from '../../components/ui/PageHead.jsx'
-import Flash from '../../components/ui/Flash.jsx'
+import { useToast } from '../../components/ui/Toast.jsx'
 
 export default function UserForm() {
   const { id } = useParams()
   const editing = Boolean(id)
   const navigate = useNavigate()
+  const toast = useToast()
 
   const [form, setForm] = useState({ telegram_chat_id: '', nombre: '', rol: 'usuario', activo: true })
   const [projects, setProjects] = useState([])
@@ -28,6 +29,11 @@ export default function UserForm() {
   useEffect(() => {
     listActiveProjects().then(setProjects).catch((e) => setError(e.message))
   }, [])
+
+  useEffect(() => {
+    if (error) toast.err(error)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [error])
 
   useEffect(() => {
     if (!id) return
@@ -65,9 +71,10 @@ export default function UserForm() {
       if (form.rol === 'usuario') {
         await saveUserPermissions(userId, rowsFromPerms())
       }
+      toast.ok(editing ? 'Usuario actualizado.' : 'Usuario creado.')
       navigate('/usuarios')
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Error inesperado')
+      toast.err(err instanceof ApiError ? err.message : 'Error inesperado')
     } finally {
       setSending(false)
     }
@@ -85,8 +92,6 @@ export default function UserForm() {
   return (
     <>
       <PageHead title={editing ? 'Editar usuario de Telegram' : 'Nuevo usuario de Telegram'} sub="Los administradores pueden respaldar y monitorear todos los proyectos." />
-
-      {error && <Flash type="err">{error}</Flash>}
 
       <div className="card">
         <div className="card-body">
