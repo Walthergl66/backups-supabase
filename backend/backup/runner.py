@@ -154,7 +154,7 @@ def run_backup(project: dict) -> BackupResult:
         logger.error("Backup '%s': %s", slug, msg)
         return BackupResult(ok=False, detalle=msg, duracion_seg=elapsed, exit_code=proc.returncode)
 
-    verificado, detalle_verif = _verify_dump(dest)
+    verificado, detalle_verif = verify_dump(dest)
     if not verificado:
         msg = f"El backup no pasó la verificación de restauración: {detalle_verif}"
         logger.error("Backup '%s': %s", slug, msg)

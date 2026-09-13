@@ -57,3 +57,46 @@ def test_barrido_borra_claro_y_conserva_enc(db, tmp_path, monkeypatch):
     assert str(orphan) in removed
     assert enc.exists()  # el .enc nunca se toca
     cfg._settings = None
+
+def test_run_backup_usa_verify_dump_y_completa(db, tmp_path, monkeypatch):
+    """Regresión: run_backup debe llamar a verify_dump (no _verify_dump)."""
+    import subprocess
+    from backup import runner
+    from services import projects as projects_srv
+
+    monkeypatch.setenv("BACKUP_DIR", str(tmp_path / "backups"))
+    monkeypatch.setenv("BACKUP_KEEP_COUNT", "5")
+    import core.config as cfg
+    cfg._settings = None
+
+    dest_dir = tmp_path / "backups" / "nexo"
+    dest_dir.mkdir(parents=True)
+
+    calls = []
+
+    def fake_run(args, **kwargs):
+        calls.append(args)
+        if "--list" in args:  # verify_dump (pg_restore --list)
+            return subprocess.CompletedProcess(args, 0, stdout="Item 1\nItem 2\n", stderr="")
+        if args[0] == "pg_restore":  # conversión a SQL
+            out = Path(args[args.index("--file") + 1])
+            out.write_bytes(b"SELECT 1;")
+            return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+        # pg_dump
+        dest = Path(args[args.index("--file") + 1])
+        dest.write_bytes(b"%s" % bytes(64))
+        return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(runner.subprocess, "run", fake_run)
+    # Asegurarse de que pg_restore/pg_dump "existen"
+    monkeypatch.setattr(runner, "_pg_dump_binary", lambda: "pg_dump")
+    monkeypatch.setattr(runner, "_pg_restore_binary", lambda: "pg_restore")
+
+    result = runner.run_backup(
+        {"id": 1, "slug": "nexo", "connection_plain": "postgresql://x:y@h/db"}
+    )
+
+    assert result.ok is True
+    assert any("pg_dump" in c and "--list" not in c for c in calls)
+    assert any("--list" in c for c in calls)  # se llamó a verify_dump
+    cfg._settings = None
