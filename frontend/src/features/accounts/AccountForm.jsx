@@ -3,12 +3,13 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { createAccount, getAccount, updateAccount } from '../../services/accounts.js'
 import { ApiError } from '../../services/http.js'
 import PageHead from '../../components/ui/PageHead.jsx'
-import Flash from '../../components/ui/Flash.jsx'
+import { useToast } from '../../components/ui/Toast.jsx'
 
 export default function AccountForm() {
   const { id } = useParams()
   const editing = Boolean(id)
   const navigate = useNavigate()
+  const toast = useToast()
 
   const [form, setForm] = useState({ nombre: '', pat: '' })
   const [error, setError] = useState('')
@@ -21,6 +22,11 @@ export default function AccountForm() {
       .catch((e) => setError(e.message))
   }, [id])
 
+  useEffect(() => {
+    if (error) toast.err(error)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [error])
+
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
 
   const submit = async (e) => {
@@ -31,12 +37,14 @@ export default function AccountForm() {
     try {
       if (editing) {
         await updateAccount(id, payload)
+        toast.ok('Cuenta actualizada.')
       } else {
         await createAccount(payload)
+        toast.ok('Cuenta creada.')
       }
       navigate('/cuentas')
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Error inesperado')
+      toast.err(err instanceof ApiError ? err.message : 'Error inesperado')
     } finally {
       setSending(false)
     }
@@ -45,8 +53,6 @@ export default function AccountForm() {
   return (
     <>
       <PageHead title={editing ? 'Editar cuenta' : 'Nueva cuenta'} sub="Agrega una cuenta de Supabase; su token se guarda cifrado." />
-
-      {error && <Flash type="err">{error}</Flash>}
 
       <div className="card" style={{ maxWidth: 560 }}>
         <div className="card-body">
