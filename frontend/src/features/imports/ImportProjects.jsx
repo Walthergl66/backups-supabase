@@ -25,6 +25,26 @@ export default function ImportProjects() {
   const [result, setResult] = useState(null)
   const [creating, setCreating] = useState(false)
 
+  useEffect(() => {
+    if (error) toast.err(error, 8000)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [error])
+
+  const resultMessage = (d) => {
+    const ok = d.created > 0
+    const parcial = ok && (d.errors?.length > 0)
+    const tg = d.telegram_user
+      ? `\n• Usuario de Telegram @${d.telegram_user.nombre} (chat ${d.telegram_user.telegram_chat_id})${d.telegram_user.created ? ' fue registrado' : ' ya existía'}. Permisos: ${d.telegram_user.projects.join(', ')}.`
+      : ''
+    if (ok && !parcial) {
+      return `Importación completada.\nSe creó ${d.created} proyecto(s) en la cuenta "${d.account_name}".${tg}\nEl formulario se reinició; puedes importar otro lote.`
+    }
+    if (ok && parcial) {
+      return `Importación parcial: ${d.created} proyecto(s) creado(s) en la cuenta "${d.account_name}".${tg}\n\nErrores (${d.errors.length}):\n${d.errors.map((er) => `• ${er}`).join('\n')}`
+    }
+    return `Importación fallida. No se pudo crear ningún proyecto.\n\nErrores (${(d.errors || []).length}):\n${(d.errors || []).map((er) => `• ${er}`).join('\n')}`
+  }
+
   const resetForm = () => {
     setPat('')
     setAccountName('')
