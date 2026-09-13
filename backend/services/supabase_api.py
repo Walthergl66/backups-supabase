@@ -21,6 +21,35 @@ logger = logging.getLogger(__name__)
 SUPABASE_API = "https://api.supabase.com"
 
 
+class SupabaseAPIError(Exception):
+    """Error de la Management API de Supabase con mensaje amigable para el usuario."""
+
+
+def _http_error_message(resp: httpx.Response) -> str:
+    """Mensaje amigable según el código HTTP que devolvió Supabase."""
+    code = resp.status_code
+    if code in (400,):
+        return "Supabase rechazó la petición (revisa que el token sea correcto)."
+    if code in (401, 403):
+        return "El token (PAT) no es válido o no tiene permiso para ver tus proyectos."
+    if code in (404,):
+        return "No se encontró el recurso solicitado (puede que el proyecto haya sido eliminado)."
+    if code in (429,):
+        return "Supabase está limitando las peticiones. Espera un momento e inténtalo de nuevo."
+    if code >= 500:
+        return "Supabase tiene un problema temporal. Inténtalo en unos minutos."
+    return f"Supabase respondió con un error inesperado (HTTP {code})."
+
+
+def _request_error_message(exc: httpx.HTTPError) -> str:
+    """Mensaje amigable cuando hay un error de red al contactar Supabase."""
+    if isinstance(exc, httpx.ConnectError):
+        return "No se pudo conectar con Supabase (revisa tu conexión a internet)."
+    if isinstance(exc, httpx.TimeoutException):
+        return "Supabase tardó demasiado en responder. Inténtalo de nuevo."
+    return "Error de red al comunicarse con Supabase. Inténtalo de nuevo."
+
+
 def validate_pat(pat: str) -> tuple[bool, str]:
     """Valida un PAT haciendo GET /v1/projects.
 
