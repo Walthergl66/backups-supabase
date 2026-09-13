@@ -88,3 +88,19 @@ def test_test_connection_sin_psql(monkeypatch):
     ok, detail = api.test_connection("pg://x:pass@h/db")
     assert ok is True
     assert "omitida" in detail
+
+
+# --- friendly_db_error ---
+
+@pytest.mark.parametrize("stderr,esperado", [
+    ('FATAL: password authentication failed for user "postgres"', "contraseña"),
+    ('FATAL: database "postgres" does not exist', "base de datos no coincide"),
+    ('FATAL: role "postgres" does not exist', "usuario de la base de datos no existe"),
+    ('psql: error: could not translate host name "x" to address', "resolver"),
+    ('connection to server at "h" (1.2.3.4), port 5432 failed: Connection timed out', "tardó demasiado"),
+    ('connection to server at "h" (1.2.3.4), port 5432 failed: Connection refused', "rechazó"),
+    ('FATAL: requires ssl', "SSL"),
+    ('otro error raro técnico sit 72k4', "no se pudo conectar"),
+])
+def test_friendly_db_error(stderr, esperado):
+    assert esperado in api.friendly_db_error(stderr) or esperado in api.friendly_db_error(stderr).lower()
