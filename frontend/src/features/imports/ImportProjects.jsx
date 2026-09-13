@@ -63,7 +63,6 @@ export default function ImportProjects() {
     e.preventDefault()
     setError('')
     setLoading(true)
-    setResult(null)
     setSelected({})
     try {
       const d = await fetchAvailableProjects(pat)
@@ -101,7 +100,6 @@ export default function ImportProjects() {
         pooler_mode: poolerMode,
         test_connection: testConnection,
       })
-      setResult(d)
       const ok = d.created > 0
       const parcial = ok && (d.errors?.length > 0)
       if (parcial) toast.info(resultMessage(d), 12000)
