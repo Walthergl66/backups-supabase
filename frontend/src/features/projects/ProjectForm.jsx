@@ -24,6 +24,11 @@ export default function ProjectForm() {
   }, [])
 
   useEffect(() => {
+    if (error) toast.err(error)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [error])
+
+  useEffect(() => {
     if (!id) return
     getProject(id)
       .then((p) => {
@@ -57,12 +62,14 @@ export default function ProjectForm() {
     try {
       if (editing) {
         await updateProject(id, payload)
+        toast.ok('Proyecto actualizado.')
       } else {
         await createProject(payload)
+        toast.ok('Proyecto creado.')
       }
       navigate('/proyectos')
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Error inesperado')
+      toast.err(err instanceof ApiError ? err.message : 'Error inesperado')
     } finally {
       setSending(false)
     }
@@ -71,8 +78,6 @@ export default function ProjectForm() {
   return (
     <>
       <PageHead title={editing ? 'Editar proyecto' : 'Nuevo proyecto'} sub="Conecta un proyecto de Supabase y programa su respaldo automático." />
-
-      {error && <Flash type="err">{error}</Flash>}
 
       <div className="card">
         <div className="card-body">
