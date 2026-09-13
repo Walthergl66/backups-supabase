@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { getDashboard } from '../../services/dashboard.js'
 import { fmtFecha } from '../../utils/format.js'
 import PageHead from '../../components/ui/PageHead.jsx'
-import Flash from '../../components/ui/Flash.jsx'
+import { useToast } from '../../components/ui/Toast.jsx'
 import Badge from '../../components/ui/Badge.jsx'
 
 const tiles = [
@@ -15,6 +15,7 @@ const tiles = [
 ]
 
 export default function Dashboard() {
+  const toast = useToast()
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
 
@@ -22,7 +23,14 @@ export default function Dashboard() {
     getDashboard().then(setData).catch((e) => setError(e.message))
   }, [])
 
-  if (error) return <Flash type="err">{error}</Flash>
+  useEffect(() => {
+    if (error) toast.err(error)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [error])
+
+  if (error) return (
+    <PageHead title="Dashboard" sub="Todo tu sistema de respaldos en un vistazo." />
+  )
   if (!data) return <div className="muted">Cargando…</div>
 
   const d = data.dashboard

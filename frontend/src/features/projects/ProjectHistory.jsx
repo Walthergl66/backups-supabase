@@ -3,11 +3,12 @@ import { Link, useParams } from 'react-router-dom'
 import { getProjectHistory } from '../../services/projects.js'
 import { fmtBytes, fmtFecha } from '../../utils/format.js'
 import PageHead from '../../components/ui/PageHead.jsx'
-import Flash from '../../components/ui/Flash.jsx'
+import { useToast } from '../../components/ui/Toast.jsx'
 import Badge from '../../components/ui/Badge.jsx'
 
 export default function ProjectHistory() {
   const { id } = useParams()
+  const toast = useToast()
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
 
@@ -17,7 +18,16 @@ export default function ProjectHistory() {
       .catch((e) => setError(e.message))
   }, [id])
 
-  if (error) return <Flash type="err">{error}</Flash>
+  useEffect(() => {
+    if (error) toast.err(error)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [error])
+
+  if (error) return (
+    <PageHead title="Historial" sub="No se pudo cargar el historial.">
+      <Link className="btn btn-ghost" to="/proyectos">Volver a proyectos</Link>
+    </PageHead>
+  )
   if (!data) return <div className="muted">Cargando…</div>
 
   const p = data.project

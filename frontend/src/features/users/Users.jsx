@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { deleteUser, listUsers } from '../../services/users.js'
 import PageHead from '../../components/ui/PageHead.jsx'
-import Flash from '../../components/ui/Flash.jsx'
+import { useToast } from '../../components/ui/Toast.jsx'
 
 export default function Users() {
+  const toast = useToast()
   const [users, setUsers] = useState([])
   const [error, setError] = useState('')
 
@@ -14,13 +15,19 @@ export default function Users() {
     load()
   }, [])
 
+  useEffect(() => {
+    if (error) toast.err(error)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [error])
+
   const del = async (u) => {
     if (!window.confirm(`¿Eliminar al usuario de Telegram "${u.nombre}"?`)) return
     try {
       await deleteUser(u.id)
+      toast.ok(`Usuario de Telegram "${u.nombre}" eliminado.`)
       load()
     } catch (e) {
-      setError(e.message)
+      toast.err(e.message)
     }
   }
 
@@ -29,8 +36,6 @@ export default function Users() {
       <PageHead title="Usuarios de Telegram" sub="Personas que pueden operar el bot desde Telegram.">
         <Link className="btn btn-primary" to="/usuarios/nuevo">Nuevo usuario</Link>
       </PageHead>
-
-      {error && <Flash type="err">{error}</Flash>}
 
       <div className="card">
         <div className="table-scroll">

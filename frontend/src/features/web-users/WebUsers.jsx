@@ -3,10 +3,11 @@ import { Link } from 'react-router-dom'
 import { deleteWebUser, listWebUsers } from '../../services/webUsers.js'
 import { fmtFechaDate } from '../../utils/format.js'
 import PageHead from '../../components/ui/PageHead.jsx'
-import Flash from '../../components/ui/Flash.jsx'
+import { useToast } from '../../components/ui/Toast.jsx'
 import Badge from '../../components/ui/Badge.jsx'
 
 export default function WebUsers() {
+  const toast = useToast()
   const [users, setUsers] = useState([])
   const [error, setError] = useState('')
 
@@ -16,13 +17,19 @@ export default function WebUsers() {
     load()
   }, [])
 
+  useEffect(() => {
+    if (error) toast.err(error)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [error])
+
   const del = async (u) => {
     if (!window.confirm(`¿Eliminar al usuario web "${u.username}"?`)) return
     try {
       await deleteWebUser(u.id)
+      toast.ok(`Usuario web "${u.username}" eliminado.`)
       load()
     } catch (e) {
-      setError(e.message)
+      toast.err(e.message)
     }
   }
 
@@ -31,8 +38,6 @@ export default function WebUsers() {
       <PageHead title="Usuarios Web" sub="Personas con acceso al panel: administran todo o solo consultan.">
         <Link className="btn btn-primary" to="/usuarios-web/nuevo">Nuevo usuario web</Link>
       </PageHead>
-
-      {error && <Flash type="err">{error}</Flash>}
 
       <div className="card">
         <div className="table-scroll">

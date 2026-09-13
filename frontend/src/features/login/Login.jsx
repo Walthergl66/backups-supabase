@@ -1,11 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { ApiError } from '../../services/http.js'
-import Flash from '../../components/ui/Flash.jsx'
+import { useToast } from '../../components/ui/Toast.jsx'
 
 export default function Login() {
   const { login } = useAuth()
+  const toast = useToast()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [code, setCode] = useState('')
@@ -13,6 +14,11 @@ export default function Login() {
   const [error, setError] = useState('')
   const [sending, setSending] = useState(false)
   const navigate = useNavigate()
+
+  useEffect(() => {
+    if (error) toast.err(error)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [error])
 
   const submit = async (e) => {
     e.preventDefault()
@@ -48,8 +54,6 @@ export default function Login() {
         </div>
         <h1>Supabase Backups</h1>
         <p className="muted" style={{ marginTop: 0, fontSize: 13 }}>Bienvenido de nuevo. Ingresa con tu usuario del panel.</p>
-
-        {error && <Flash type="err">{error}</Flash>}
 
         <form onSubmit={submit}>
           {!totpPending ? (

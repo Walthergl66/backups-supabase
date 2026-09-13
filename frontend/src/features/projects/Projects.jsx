@@ -3,10 +3,11 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { deleteProject, listProjects, restoreProject } from '../../services/projects.js'
 import { useAuth } from '../auth/AuthContext.jsx'
 import PageHead from '../../components/ui/PageHead.jsx'
-import Flash from '../../components/ui/Flash.jsx'
+import { useToast } from '../../components/ui/Toast.jsx'
 import Badge from '../../components/ui/Badge.jsx'
 
 export default function Projects() {
+  const toast = useToast()
   const [projects, setProjects] = useState([])
   const [error, setError] = useState('')
   const [params, setParams] = useSearchParams()
@@ -24,13 +25,19 @@ export default function Projects() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [estado])
 
+  useEffect(() => {
+    if (error) toast.err(error)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [error])
+
   const del = async (p) => {
     if (!window.confirm(`¿Eliminar el proyecto "${p.slug}"? Se conserva su historial.`)) return
     try {
       await deleteProject(p.id)
+      toast.ok(`Proyecto "${p.slug}" eliminado.`)
       load()
     } catch (e) {
-      setError(e.message)
+      toast.err(e.message)
     }
   }
 
@@ -39,9 +46,10 @@ export default function Projects() {
     if (slug == null) return
     try {
       await restoreProject(p.id, slug)
+      toast.ok(`Proyecto "${slug}" restaurado.`)
       load()
     } catch (e) {
-      setError(e.message)
+      toast.err(e.message)
     }
   }
 
@@ -62,8 +70,6 @@ export default function Projects() {
           )}
         </div>
       </PageHead>
-
-      {error && <Flash type="err">{error}</Flash>}
 
       <div className="card">
         <div className="table-scroll">

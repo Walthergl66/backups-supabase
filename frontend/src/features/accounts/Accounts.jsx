@@ -3,10 +3,11 @@ import { Link } from 'react-router-dom'
 import { deleteAccount, listAccounts } from '../../services/accounts.js'
 import { fmtFechaDate } from '../../utils/format.js'
 import PageHead from '../../components/ui/PageHead.jsx'
-import Flash from '../../components/ui/Flash.jsx'
+import { useToast } from '../../components/ui/Toast.jsx'
 import Badge from '../../components/ui/Badge.jsx'
 
 export default function Accounts() {
+  const toast = useToast()
   const [accounts, setAccounts] = useState([])
   const [error, setError] = useState('')
 
@@ -16,13 +17,19 @@ export default function Accounts() {
     load()
   }, [])
 
+  useEffect(() => {
+    if (error) toast.err(error)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [error])
+
   const del = async (a) => {
     if (!window.confirm(`¿Eliminar la cuenta "${a.nombre}"?`)) return
     try {
       await deleteAccount(a.id)
+      toast.ok(`Cuenta "${a.nombre}" eliminada.`)
       load()
     } catch (e) {
-      setError(e.message)
+      toast.err(e.message)
     }
   }
 
@@ -31,8 +38,6 @@ export default function Accounts() {
       <PageHead title="Cuentas" sub="Cuentas de Supabase que alimentan el panel.">
         <Link className="btn btn-primary" to="/cuentas/nueva">Nueva cuenta</Link>
       </PageHead>
-
-      {error && <Flash type="err">{error}</Flash>}
 
       <div className="card">
         <div className="table-scroll">

@@ -4,12 +4,13 @@ import { createProject, getProject, updateProject } from '../../services/project
 import { listAccounts } from '../../services/accounts.js'
 import { ApiError } from '../../services/http.js'
 import PageHead from '../../components/ui/PageHead.jsx'
-import Flash from '../../components/ui/Flash.jsx'
+import { useToast } from '../../components/ui/Toast.jsx'
 
 export default function ProjectForm() {
   const { id } = useParams()
   const editing = Boolean(id)
   const navigate = useNavigate()
+  const toast = useToast()
 
   const [accounts, setAccounts] = useState([])
   const [form, setForm] = useState({
