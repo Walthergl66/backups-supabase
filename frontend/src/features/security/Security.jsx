@@ -1,12 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { totpSetup, totpConfirm, totpDisable } from '../../services/totp.js'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { ApiError } from '../../services/http.js'
 import PageHead from '../../components/ui/PageHead.jsx'
-import Flash from '../../components/ui/Flash.jsx'
+import { useToast } from '../../components/ui/Toast.jsx'
 
 export default function Security() {
   const { user } = useAuth()
+  const toast = useToast()
   const [active, setActive] = useState(Boolean(user?.totp_enabled))
   const [qr, setQr] = useState(null)
   const [secret, setSecret] = useState('')
@@ -15,6 +16,11 @@ export default function Security() {
   const [sending, setSending] = useState(false)
 
   const enabling = !active && qr
+
+  useEffect(() => {
+    if (error) toast.err(error)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [error])
 
   const startSetup = async () => {
     setError('')
@@ -25,7 +31,7 @@ export default function Security() {
       setSecret(r.secret)
       setCode('')
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Error inesperado')
+      toast.err(err instanceof ApiError ? err.message : 'Error inesperado')
     } finally {
       setSending(false)
     }
@@ -41,8 +47,9 @@ export default function Security() {
       setQr(null)
       setSecret('')
       setCode('')
+      toast.ok('2FA activado correctamente.')
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Error inesperado')
+      toast.err(err instanceof ApiError ? err.message : 'Error inesperado')
     } finally {
       setSending(false)
     }
@@ -56,8 +63,9 @@ export default function Security() {
       await totpDisable(code)
       setActive(false)
       setCode('')
+      toast.ok('2FA desactivado.')
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Error inesperado')
+      toast.err(err instanceof ApiError ? err.message : 'Error inesperado')
     } finally {
       setSending(false)
     }
@@ -66,8 +74,6 @@ export default function Security() {
   return (
     <>
       <PageHead title="Seguridad" sub="Verificación en dos pasos (TOTP) de tu cuenta del panel." />
-
-      {error && <Flash type="err">{error}</Flash>}
 
       <div className="card" style={{ maxWidth: 480 }}>
         <div className="card-body">

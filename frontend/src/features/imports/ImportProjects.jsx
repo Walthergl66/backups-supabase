@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createImportedProjects, fetchAvailableProjects } from '../../services/imports.js'
 import { ApiError } from '../../services/http.js'
 import PageHead from '../../components/ui/PageHead.jsx'
-import Flash from '../../components/ui/Flash.jsx'
+import { useToast } from '../../components/ui/Toast.jsx'
 
 export default function ImportProjects() {
+  const toast = useToast()
   const [pat, setPat] = useState('')
   const [accountName, setAccountName] = useState('')
   const [available, setAvailable] = useState([])

@@ -23,9 +23,9 @@ export function ToastProvider({ children }) {
   }, [dismiss])
 
   const toast = useMemo(() => ({
-    ok: (m) => push('ok', m),
-    err: (m) => push('err', m),
-    info: (m) => push('info', m),
+    ok: (m, d) => push('ok', m, d),
+    err: (m, d) => push('err', m, d),
+    info: (m, d) => push('info', m, d),
   }), [push])
 
   const value = useMemo(() => ({ toast }), [toast])
