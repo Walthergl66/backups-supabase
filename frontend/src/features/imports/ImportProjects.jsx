@@ -22,7 +22,6 @@ export default function ImportProjects() {
   const [poolerMode, setPoolerMode] = useState('session')
   const [testConnection, setTestConnection] = useState(true)
 
-  const [result, setResult] = useState(null)
   const [creating, setCreating] = useState(false)
 
   useEffect(() => {
@@ -122,44 +121,6 @@ export default function ImportProjects() {
   return (
     <>
       <PageHead title="Importar proyectos" sub="Importa tus proyectos de Supabase y registra quién los operará desde Telegram." />
-
-      {error && <Flash type="err">{error}</Flash>}
-
-      {result && (() => {
-        const ok = result.created > 0
-        const parcial = ok && result.errors?.length > 0
-        const tone = ok ? (parcial ? 'info' : 'ok') : 'err'
-        return (
-          <Flash type={tone}>
-            <div>
-              {ok ? (
-                <><strong>{parcial ? 'Importación parcial.' : 'Importación completada.'}</strong>{' '}
-                  Se crearon {result.created} proyecto(s) en la cuenta <em>{result.account_name}</em></>
-              ) : (
-                <><strong>Importación fallida.</strong> No se pudo crear ningún proyecto.</>
-              )}
-              {result.telegram_user && (
-                <>
-                  {' '}y el usuario de Telegram <strong>@{result.telegram_user.nombre}</strong> (chat {result.telegram_user.telegram_chat_id})
-                  {result.telegram_user.created ? ' fue registrado' : ' ya existía'}.
-                  Permisos: {result.telegram_user.projects.join(', ')}.
-                </>
-              )}
-              {ok && !result.errors?.length && (
-                <div style={{ marginTop: 6 }}>El formulario se reinició. Puedes importar otro lote.</div>
-              )}
-              {result.errors?.length > 0 && (
-                <>
-                  <div style={{ marginTop: 6 }}><strong>Errores ({result.errors.length}):</strong></div>
-                  <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
-                    {result.errors.map((er, i) => <li key={i}>{er}</li>)}
-                  </ul>
-                </>
-              )}
-            </div>
-          </Flash>
-        )
-      })()}
 
       <form onSubmit={fetchProjects} className="card" style={{ marginBottom: 18 }}>
         <div className="card-head"><span className="card-title">1 · Token de Supabase</span></div>
