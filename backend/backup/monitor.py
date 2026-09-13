@@ -8,6 +8,7 @@ import subprocess
 import httpx
 
 from core import sanitize
+from services import supabase_api as api_srv
 
 logger = logging.getLogger(__name__)
 
@@ -33,11 +34,13 @@ def check_database_connection(conn_str: str) -> tuple[bool, str]:
     except FileNotFoundError:
         return False, "El binario psql no está disponible (instala postgresql-client)."
     except OSError as exc:
-        return False, sanitize.redact_secrets(f"No se pudo lanzar psql: {exc}")
+        return False, api_srv.friendly_db_error(f"No se pudo lanzar psql: {exc}")
     if proc.returncode == 0:
         return True, "La base de datos responde correctamente."
-    tail = (proc.stderr or proc.stdout or "").strip().splitlines()
-    return False, sanitize.redact_secrets("\n".join(tail[-3:]) or "Conexión rechazada.")
+    detail = sanitize.redact_secrets(
+        (proc.stderr or proc.stdout or "").strip() or "Conexión rechazada."
+    )
+    return False, api_srv.friendly_db_error(detail)
 
 
 def check_supabase_api(project_ref: str, pat: str) -> tuple[bool, str]:
@@ -49,13 +52,11 @@ def check_supabase_api(project_ref: str, pat: str) -> tuple[bool, str]:
     try:
         resp = httpx.get(f"{SUPABASE_API}/v1/projects/{project_ref}/status", headers=headers, timeout=20)
     except httpx.HTTPError as exc:
-        return False, sanitize.redact_secrets(f"No se pudo contactar la Management API: {exc}")
+        return False, api_srv._request_error_message(exc)
     if resp.status_code == 200:
         data = resp.json()
         status = data.get("status", "desconocido")
         return True, f"Management API: proyecto {project_ref} -> {status}."
     if resp.status_code == 401 or resp.status_code == 403:
         return False, "Management API: el Personal Access Token no es válido o no tiene permisos."
-    return False, sanitize.redact_secrets(
-        f"Management API respondió HTTP {resp.status_code}: {resp.text[:300]}"
-    )
+    return False, api_srv._http_error_message(resp)

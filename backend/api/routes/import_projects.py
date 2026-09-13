@@ -26,11 +26,12 @@ async def fetch_projects(request: Request, admin: dict = Depends(require_admin))
 
     try:
         projects = await asyncio.to_thread(api_srv.list_projects, pat)
-    except Exception as exc:
+    except api_srv.SupabaseAPIError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception:
         raise HTTPException(
-            status_code=400,
-            detail=f"Error al consultar Supabase: {sanitize.redact_secrets(str(exc))}",
-        ) from exc
+            status_code=502, detail="No se pudo consultar a Supabase. Inténtalo de nuevo."
+        ) from None
 
     # Solo cuentan los proyectos ACTIVOS: los eliminados (archived/activo=0)
     # liberan su ref y pueden volver a importarse.
@@ -75,11 +76,12 @@ async def create_imported_projects(request: Request, admin: dict = Depends(requi
 
     try:
         all_projects = await asyncio.to_thread(api_srv.list_projects, pat)
-    except Exception as exc:
+    except api_srv.SupabaseAPIError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception:
         raise HTTPException(
-            status_code=400,
-            detail=f"Error al consultar Supabase: {sanitize.redact_secrets(str(exc))}",
-        ) from exc
+            status_code=502, detail="No se pudo consultar a Supabase. Inténtalo de nuevo."
+        ) from None
 
     account_name = account_name or "Importada desde bot"
     try:

@@ -71,21 +71,30 @@ def list_projects(pat: str) -> list[dict]:
     """Lista los proyectos del usuario asociados al PAT.
 
     Devuelve una lista de diccionarios con keys: ref, name, status, region.
-    Lanza httpx.HTTPError si falla la conexión.
+    Lanza SupabaseAPIError con mensaje amigable si falla.
     """
     headers = {"Authorization": f"Bearer {pat}", "Accept": "application/json"}
-    resp = httpx.get(f"{SUPABASE_API}/v1/projects", headers=headers, timeout=15)
-    resp.raise_for_status()
-    projects = resp.json()
-    return [
-        {
-            "ref": p.get("id") or p.get("ref", ""),
-            "name": p.get("name", ""),
-            "status": p.get("status", "unknown"),
-            "region": p.get("region", ""),
-        }
-        for p in projects
-    ]
+    try:
+        resp = httpx.get(f"{SUPABASE_API}/v1/projects", headers=headers, timeout=15)
+    except httpx.HTTPError as exc:
+        raise SupabaseAPIError(_request_error_message(exc)) from exc
+    if resp.status_code == 200:
+        try:
+            projects = resp.json()
+        except ValueError:
+            raise SupabaseAPIError(
+                "Supabase devolvió una respuesta inesperada. Inténtalo de nuevo."
+            )
+        return [
+            {
+                "ref": p.get("id") or p.get("ref", ""),
+                "name": p.get("name", ""),
+                "status": p.get("status", "unknown"),
+                "region": p.get("region", ""),
+            }
+            for p in projects
+        ]
+    raise SupabaseAPIError(_http_error_message(resp))
 
 
 def get_connection_string(

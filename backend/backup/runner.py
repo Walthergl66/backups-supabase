@@ -30,6 +30,7 @@ from pathlib import Path
 from core import crypto as crypto_mod
 from core import sanitize
 from core.config import settings
+from services import supabase_api as api_srv
 
 logger = logging.getLogger(__name__)
 
@@ -136,14 +137,13 @@ def run_backup(project: dict) -> BackupResult:
     detail = sanitize.redact_secrets((proc.stderr or "").strip())
 
     if proc.returncode != 0:
-        tail = detail.splitlines()
-        tail = "\n".join(tail[-5:]) if tail else "(sin detalle de error)"
         # pg_dump puede dejar un archivo parcial en claro: se elimina.
         dest.unlink(missing_ok=True)
-        logger.error("Backup '%s' falló (exit %s): %s", slug, proc.returncode, tail)
+        friendly = api_srv.friendly_db_error(detail or "pg_dump terminó con error.")
+        logger.error("Backup '%s' falló (exit %s): %s", slug, proc.returncode, detail)
         return BackupResult(
             ok=False,
-            detalle=tail or "pg_dump terminó con error.",
+            detalle=friendly,
             duracion_seg=elapsed,
             exit_code=proc.returncode,
         )
