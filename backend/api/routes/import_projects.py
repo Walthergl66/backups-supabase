@@ -7,7 +7,6 @@ import asyncio
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from api.deps import require_admin
-from core import sanitize
 from services import accounts as accounts_srv
 from services import audit as audit_srv
 from services import projects as projects_srv

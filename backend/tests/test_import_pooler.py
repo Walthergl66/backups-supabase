@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import pytest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
+import httpx
 from services import supabase_api as api
 
 
@@ -104,3 +105,48 @@ def test_test_connection_sin_psql(monkeypatch):
 ])
 def test_friendly_db_error(stderr, esperado):
     assert esperado in api.friendly_db_error(stderr) or esperado in api.friendly_db_error(stderr).lower()
+
+
+# --- SupabaseAPIError / mensajes amigables ---
+
+def test_list_projects_401_mensaje_amigable():
+    resp = Mock()
+    resp.status_code = 401
+    with patch.object(api.httpx, "get", return_value=resp):
+        with pytest.raises(api.SupabaseAPIError) as ei:
+            api.list_projects("sbp_x")
+    assert "token" in str(ei.value).lower()
+
+
+def test_list_projects_error_red_mensaje_amigable():
+    with patch.object(api.httpx, "get", side_effect=httpx.ConnectError("tin")) as m:
+        with pytest.raises(api.SupabaseAPIError) as ei:
+            api.list_projects("sbp_x")
+    assert "conectar" in str(ei.value).lower()
+    assert m.called
+
+
+def test_list_projects_timeout_mensaje_amigable():
+    with patch.object(api.httpx, "get", side_effect=httpx.TimeoutException("slow")):
+        with pytest.raises(api.SupabaseAPIError) as ei:
+            api.list_projects("sbp_x")
+    assert "tardó demasiado" in str(ei.value)
+
+
+def test_list_projects_json_invalido():
+    resp = Mock()
+    resp.status_code = 200
+    resp.json.side_effect = ValueError("bad json")
+    with patch.object(api.httpx, "get", return_value=resp):
+        with pytest.raises(api.SupabaseAPIError) as ei:
+            api.list_projects("sbp_x")
+    assert "inesperada" in str(ei.value)
+
+
+def test_list_projects_ok_parsea():
+    resp = Mock()
+    resp.status_code = 200
+    resp.json.return_value = [{"id": "abc", "name": "N", "status": "ACTIVE", "region": "us"}]
+    with patch.object(api.httpx, "get", return_value=resp):
+        out = api.list_projects("sbp_x")
+    assert out == [{"ref": "abc", "name": "N", "status": "ACTIVE", "region": "us"}]

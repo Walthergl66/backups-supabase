@@ -29,12 +29,12 @@ def get_current_user(authorization: str | None = Header(default=None)) -> dict:
         )
     try:
         claims = jwt.decode_token(token.strip())
-    except jwt.InvalidToken as exc:
+    except jwt.InvalidToken:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Token inválido: {exc}",
+            detail="Tu sesión no es válida. Vuelve a iniciar sesión.",
             headers={"WWW-Authenticate": "Bearer"},
-        ) from exc
+        ) from None
 
     # Token revocado en logout: se invalida de inmediato (no se espera a expirar).
     if access_blacklist.blacklist.is_revoked(claims.get("jti")):

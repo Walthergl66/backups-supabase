@@ -27,7 +27,6 @@ from backup import scheduler_jobs
 from backup import self_backup as self_backup_mod
 from bot import build_application, run_bot_forever
 from core import db as db_core
-from core import sanitize
 from core.config import settings
 from notify import telegram as notify_mod
 from notify.daily_summary import send_daily_summary as _send_daily_summary
@@ -127,10 +126,10 @@ async def daily_summary_job(log: logging.Logger) -> None:
         await asyncio.to_thread(_send_daily_summary)
         log.info("Resumen diario enviado a los admins.")
     except Exception as exc:  # noqa: BLE001
-        log.exception("Falló el resumen diario por Telegram")
+        log.exception("Falló el resumen diario por Telegram: %s", exc)
         try:
             await notify_mod.notify_admins(
-                f"⚠️ Falló el resumen diario de backups: {sanitize.redact_secrets(str(exc))}"
+                "⚠️ Falló el resumen diario de backups. Revisa los logs del contenedor."
             )
         except Exception as notify_exc:  # noqa: BLE001
             log.error("Y además falló la alerta por Telegram: %s", notify_exc)
@@ -145,10 +144,10 @@ async def daily_self_backup_job(log: logging.Logger) -> None:
         if settings().self_backup_telegram:
             await self_backup_mod.send_latest_to_telegram()
     except Exception as exc:  # noqa: BLE001
-        log.exception("Falló el self-backup diario de la base")
+        log.exception("Falló el self-backup diario de la base: %s", exc)
         try:
             await notify_mod.notify_admins(
-                f"⚠️ Falló el self-backup de la base del panel: {sanitize.redact_secrets(str(exc))}"
+                "⚠️ Falló el self-backup diario de la base del panel. Revisa los logs del contenedor."
             )
         except Exception as notify_exc:  # noqa: BLE001
             log.error("Y además falló la alerta por Telegram: %s", notify_exc)
