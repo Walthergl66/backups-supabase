@@ -21,11 +21,31 @@ def _row_to_dict(row) -> dict | None:
     }
 
 
+def _row_to_dict_plain(row) -> dict | None:
+    if row is None:
+        return None
+    return {
+        "id": row["id"],
+        "nombre": row["nombre"],
+        "activo": bool(row["activo"]),
+        "created_at": row["created_at"],
+        "pat": crypto.decrypt(row["pat_encrypted"]),
+    }
+
+
 def create_account(nombre: str, pat: str) -> int:
     nombre = nombre.strip()
     pat = pat.strip()
     if not nombre or not pat:
         raise AccountError("Nombre y Personal Access Token son obligatorios.")
+    # Reutiliza la cuenta activa que ya tenga este mismo PAT para no duplicar
+    # registros al reimportar (p. ej. tras eliminar un proyecto).
+    for row in db.fetch_all("SELECT * FROM accounts WHERE activo = 1"):
+        row = _row_to_dict_plain(row)
+        if row and row["pat"] == pat:
+            if row["nombre"] != nombre:
+                db.execute("UPDATE accounts SET nombre = ? WHERE id = ?", (nombre, row["id"]))
+            return row["id"]
     return db.execute(
         "INSERT INTO accounts (nombre, pat_encrypted) VALUES (?, ?)",
         (nombre, crypto.encrypt(pat)),

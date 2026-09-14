@@ -17,6 +17,18 @@ def _fake_refs():
     return [{"ref": "baxqsoqjihtllkakiwxq", "name": "nexo", "status": "ACTIVE_HEALTHY", "region": "us-west-2"}]
 
 
+def test_reimportar_reutiliza_cuenta_con_mismo_pat(db):
+    from services import accounts as accounts_srv
+
+    a1 = create_account("Importada desde bot", "sbp_abc")
+    a2 = create_account("Importada desde bot", "sbp_abc")
+    a3 = create_account("Otra cuenta", "sbp_xyz")
+
+    assert a2 == a1, "mismo PAT debe reutilizar la cuenta"
+    assert a3 != a1, "PAT distinto debe crear otra cuenta"
+    assert len(accounts_srv.list_accounts()) == 2
+
+
 def test_proyecto_eliminado_vuelve_a_disponible(db):
     from api.app import app
 
