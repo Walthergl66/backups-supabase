@@ -45,10 +45,11 @@ class RefreshTokenStore:
         """Valida el token; si es válido lo invalida y emite uno nuevo (rotación)."""
         if not token:
             return None
+        self._purge_expired()
         token_hash = _hash_token(token)
         row = db.fetch_one(
-            "SELECT user_id, username, rol FROM refresh_sessions WHERE token_hash = ?",
-            (token_hash,),
+            "SELECT user_id, username, rol FROM refresh_sessions WHERE token_hash = ? AND expires_at > ?",
+            (token_hash, time.time()),
         )
         if row is None:
             return None

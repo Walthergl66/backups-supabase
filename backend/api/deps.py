@@ -73,8 +73,3 @@ def require_admin(authorization: str | None = Header(default=None)) -> dict:
             detail="Necesitas el rol admin para realizar esta acción.",
         )
     return user
-
-
-def viewer_allowed(user: dict = None) -> bool:
-    """Los operaciones de lectura se permiten a admin y viewer."""
-    return True

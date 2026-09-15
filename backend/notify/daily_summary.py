@@ -8,12 +8,23 @@ con contenido (no se manda si no hay proyectos activos).
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
+from core.config import settings
 from services import backup_history, projects
 
 STALE_HOURS = 26
 _TIME_FMT = "%Y-%m-%d %H:%M:%S"
+
+
+def _local_now() -> datetime:
+    """Hora local según DAILY_SUMMARY_TZ (por defecto UTC)."""
+    try:
+        tz = ZoneInfo(settings().daily_summary_tz)
+    except Exception:  # noqa: BLE001 - zona inválida: se cae a UTC
+        tz = ZoneInfo("UTC")
+    return datetime.now(timezone.utc).astimezone(tz)
 
 
 def build_daily_summary() -> str:
@@ -23,6 +34,7 @@ def build_daily_summary() -> str:
 
     now = datetime.now()
     cutoff = now - timedelta(hours=STALE_HOURS)
+    local = _local_now()
     lines: list[str] = ["📊 Resumen diario de backups", ""]
     stale_count = 0
 
@@ -49,7 +61,7 @@ def build_daily_summary() -> str:
         if err is not None and (ok is None or _parse(err["fecha"]) > _parse(ok["fecha"])):
             lines.append(f"  └─ ⚠️ último intento falló: {err.get('detalle') or 'error'} ({err['fecha']})")
 
-    lines.insert(1, f"<b>{now.strftime('%Y-%m-%d %H:%M UTC')}</b> · {len(active)} proyectos activos · {stale_count} con riesgo")
+    lines.insert(1, f"<b>{local.strftime('%Y-%m-%d %H:%M')}</b> · {len(active)} proyectos activos · {stale_count} con riesgo")
 
     if stale_count:
         lines.append("")

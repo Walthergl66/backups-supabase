@@ -161,6 +161,11 @@ def setup_scheduler(log: logging.Logger) -> AsyncIOScheduler:
     except Exception:  # noqa: BLE001 - zona inválida: se cae a UTC
         tzinfo = ZoneInfo("UTC")
 
+    try:
+        summary_tzinfo = ZoneInfo(cfg.daily_summary_tz)
+    except Exception:  # noqa: BLE001 - zona inválida: se cae a UTC
+        summary_tzinfo = ZoneInfo("UTC")
+
     hour, minute = 3, 0
     try:
         hora, minuto = cfg.self_backup_time.split(":")
@@ -203,7 +208,7 @@ def setup_scheduler(log: logging.Logger) -> AsyncIOScheduler:
             summary_hour, summary_min = 8, 0
         scheduler.add_job(
             daily_summary_job,
-            CronTrigger(hour=summary_hour, minute=summary_min, timezone=tzinfo),
+            CronTrigger(hour=summary_hour, minute=summary_min, timezone=summary_tzinfo),
             args=[log],
             id="daily_summary",
             misfire_grace_time=3600,
@@ -211,7 +216,7 @@ def setup_scheduler(log: logging.Logger) -> AsyncIOScheduler:
         )
         log.info(
             "Resumen diario por Telegram programado a las %02d:%02d (%s)",
-            summary_hour, summary_min, tzinfo,
+            summary_hour, summary_min, summary_tzinfo,
         )
     return scheduler
 

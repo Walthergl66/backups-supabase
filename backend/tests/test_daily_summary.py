@@ -59,3 +59,13 @@ def test_error_posterior_al_ok_se_avisa(db):
     _seed_project(db, "dudoso", last_ok=now - timedelta(hours=2), last_err=now - timedelta(hours=1))
     text = build_daily_summary()
     assert "último intento falló" in text
+
+
+def test_header_usa_tz_configurada(db, monkeypatch):
+    monkeypatch.setenv("DAILY_SUMMARY_TZ", "America/Lima")
+    import core.config as cfg
+    cfg._settings = None
+    _seed_project(db, "sano", last_ok=datetime.now())
+    text = build_daily_summary()
+    assert "UTC" not in text.split("\n")[1]
+    cfg._settings = None
