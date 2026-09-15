@@ -75,3 +75,16 @@ def test_delete_project_es_logico_y_restaura(db):
     row = db.fetch_one("SELECT slug, activo, archived FROM projects WHERE id = ?", (pid,))
     assert row["activo"] == 1 and row["archived"] == 0
     assert row["slug"] == "borrable-v2"
+
+
+def test_restore_sin_slug_usa_el_original(db):
+    acc = db.execute("INSERT INTO accounts (nombre, pat_encrypted) VALUES ('A', 'x')")
+    pid = create_project(
+        slug="borrable", nombre="X", account_id=acc,
+        connection="postgresql://u:p@h/d", project_ref="ref123",
+    )
+    delete_project(pid)
+    restore_project(pid)
+    row = db.fetch_one("SELECT slug, activo FROM projects WHERE id = ?", (pid,))
+    assert row["activo"] == 1
+    assert row["slug"] == "borrable"

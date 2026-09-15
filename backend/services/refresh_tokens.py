@@ -3,63 +3,73 @@
 El access token (JWT) es corto y viaja en `Authorization: Bearer`. La sesión
 de larga duración vive en un *refresh token* opaco guardado en cookie
 `HttpOnly` (inaccesible a JS), que se rota en cada uso y expira tras 7 días
-por defecto. En memoria (un solo proceso, un solo contenedor), igual que las
-sesiones web.
+por defecto.
+
+Los tokens se persisten en SQLite (tabla `refresh_sessions`) para que las
+sesiones sobrevivan a reinicios del contenedor. Solo se guarda el hash
+SHA-256 del token, nunca el token en claro, de modo que un volcado de la BD
+no exponga credenciales utilizables.
 """
 
 from __future__ import annotations
 
+import hashlib
 import secrets
-import threading
 import time
 
+from core import db
 from core.config import settings
 
 
-class RefreshTokenStore:
-    def __init__(self) -> None:
-        self._tokens: dict[str, dict] = {}
-        self._lock = threading.Lock()
+def _hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
+
+class RefreshTokenStore:
     def create(self, user: dict) -> str:
+        """Crea una sesión y devuelve el token en claro (única vez que existe)."""
         token = secrets.token_urlsafe(48)
-        with self._lock:
-            self._purge()
-            self._tokens[token] = {
-                "user_id": user["id"],
-                "username": user["username"],
-                "rol": user["rol"],
-                "created_at": time.time(),
-            }
+        now = time.time()
+        db.execute(
+            """
+            INSERT INTO refresh_sessions (token_hash, user_id, username, rol, created_at, expires_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (_hash_token(token), user["id"], user["username"], user["rol"],
+             now, now + settings().refresh_ttl_seconds),
+        )
+        self._purge_expired()
         return token
 
     def validate_and_rotate(self, token: str) -> tuple[str, dict] | None:
         """Valida el token; si es válido lo invalida y emite uno nuevo (rotación)."""
-        with self._lock:
-            self._purge()
-            entry = self._tokens.pop(token, None)
-            if entry is None:
-                return None
-        user = {
-            "id": entry["user_id"],
-            "username": entry["username"],
-            "rol": entry["rol"],
+        if not token:
+            return None
+        token_hash = _hash_token(token)
+        row = db.fetch_one(
+            "SELECT user_id, username, rol FROM refresh_sessions WHERE token_hash = ?",
+            (token_hash,),
+        )
+        if row is None:
+            return None
+        db.execute("DELETE FROM refresh_sessions WHERE token_hash = ?", (token_hash,))
+        entry = {
+            "id": row["user_id"],
+            "user_id": row["user_id"],
+            "username": row["username"],
+            "rol": row["rol"],
         }
-        new_token = self.create(user)
+        new_token = self.create(entry)
         return new_token, entry
 
     def revoke(self, token: str) -> None:
-        with self._lock:
-            self._tokens.pop(token, None)
+        if not token:
+            return
+        db.execute("DELETE FROM refresh_sessions WHERE token_hash = ?", (_hash_token(token),))
 
-    def _purge(self) -> None:
-        now = time.time()
-        ttl = settings().refresh_ttl_seconds
-        expired = [
-            t for t, e in self._tokens.items() if now - e["created_at"] > ttl
-        ]
-        for t in expired:
-            self._tokens.pop(t, None)
+    def _purge_expired(self) -> None:
+        """Borra sesiones vencidas (se invoca al crear una nueva)."""
+        db.execute("DELETE FROM refresh_sessions WHERE expires_at <= ?", (time.time(),))
 
 
 refresh_store = RefreshTokenStore()

@@ -45,6 +45,17 @@ def _migrate() -> None:
         "ALTER TABLE projects ADD COLUMN archived INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE web_users ADD COLUMN totp_secret TEXT",
         "ALTER TABLE web_users ADD COLUMN totp_enabled INTEGER NOT NULL DEFAULT 0",
+        """
+        CREATE TABLE IF NOT EXISTS refresh_sessions (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            token_hash TEXT NOT NULL UNIQUE,
+            user_id    INTEGER NOT NULL REFERENCES web_users(id) ON DELETE CASCADE,
+            username   TEXT NOT NULL,
+            rol        TEXT NOT NULL,
+            created_at REAL NOT NULL,
+            expires_at REAL NOT NULL
+        )
+        """,
     ]
     with connect() as conn:
         for statement in statements:
@@ -52,6 +63,12 @@ def _migrate() -> None:
                 conn.execute(statement)
             except sqlite3.OperationalError:
                 pass  # La columna ya existe
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_refresh_sessions_user ON refresh_sessions (user_id)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_refresh_sessions_expiry ON refresh_sessions (expires_at)"
+        )
 
 
 def fetch_one(sql: str, params: Iterable[Any] = ()) -> sqlite3.Row | None:

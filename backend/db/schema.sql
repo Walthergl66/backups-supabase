@@ -106,6 +106,20 @@ CREATE TABLE audit_log (
     timestamp   TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- ------------------------------------------------------------------
+-- Sesiones de la web (refresh tokens). Solo se guarda el hash del
+-- token para que un volcado de la BD no exponga tokens utilizables.
+-- ------------------------------------------------------------------
+CREATE TABLE refresh_sessions (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    token_hash TEXT NOT NULL UNIQUE,               -- SHA-256 del refresh token
+    user_id    INTEGER NOT NULL REFERENCES web_users(id) ON DELETE CASCADE,
+    username   TEXT NOT NULL,                      -- snapshot para rehidratar el JWT
+    rol        TEXT NOT NULL,
+    created_at REAL NOT NULL,                      -- epoch seconds
+    expires_at REAL NOT NULL                       -- epoch seconds
+);
+
 CREATE INDEX IF NOT EXISTS idx_backup_history_project
     ON backup_history (project_id, fecha DESC);
 
@@ -117,3 +131,9 @@ CREATE INDEX IF NOT EXISTS idx_permissions_project
 
 CREATE INDEX IF NOT EXISTS idx_audit_timestamp
     ON audit_log (timestamp DESC);
+
+CREATE INDEX IF NOT EXISTS idx_refresh_sessions_user
+    ON refresh_sessions (user_id);
+
+CREATE INDEX IF NOT EXISTS idx_refresh_sessions_expiry
+    ON refresh_sessions (expires_at);

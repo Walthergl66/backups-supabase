@@ -45,6 +45,20 @@ def test_audit_listado_paginado(db):
     assert rows[0]["accion"] == "a2"
 
 
+def test_audit_expone_fecha_y_origen(db):
+    web_id = db.execute("INSERT INTO web_users (username, password_hash, rol) VALUES ('admin', 'x', 'admin')")
+    db.execute(
+        "INSERT INTO audit_log (accion, resultado, web_user_id) VALUES ('accion', 'ok', ?)",
+        (web_id,),
+    )
+    rows = audit.list_audit()
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["fecha"] == row["timestamp"]
+    assert row["fecha"]
+    assert row["origen"] == "Web · admin"
+
+
 class _FakeRequest:
     def __init__(self, headers):
         self.headers = headers

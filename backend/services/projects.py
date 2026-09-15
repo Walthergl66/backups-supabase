@@ -196,7 +196,7 @@ def restore_project(project_id: int, slug: str | None = None) -> None:
     current = db.fetch_one("SELECT * FROM projects WHERE id = ?", (project_id,))
     if current is None:
         raise ProjectError("El proyecto no existe.")
-    candidate = (slug or "").strip() or current["slug"].split(")-", 1)[-1]
+    candidate = (slug or "").strip() or re.sub(r"^\(eliminado\)-\d+-", "", current["slug"] or "")
     if not _SLUG_RE.match(candidate):
         raise ProjectError("Slug inválido para restaurar.")
     clash = db.fetch_one("SELECT id FROM projects WHERE slug = ? AND id != ?", (candidate, project_id))

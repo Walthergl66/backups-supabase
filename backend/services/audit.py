@@ -24,8 +24,8 @@ def log_action(
     )
 
 
-def list_audit(limit: int = 100, offset: int = 0) -> list:
-    return db.fetch_all(
+def list_audit(limit: int = 100, offset: int = 0) -> list[dict]:
+    rows = db.fetch_all(
         """
         SELECT a.*,
                u.nombre   AS telegram_user,
@@ -40,6 +40,20 @@ def list_audit(limit: int = 100, offset: int = 0) -> list:
         """,
         (limit, offset),
     )
+    return [_row_to_dict(r) for r in rows]
+
+
+def _row_to_dict(row) -> dict:
+    """Normaliza una fila: expone `fecha` (alias de timestamp) y `origen`."""
+    data = dict(row)
+    data["fecha"] = row["timestamp"]
+    if row["web_user"]:
+        data["origen"] = f"Web · {row['web_user']}"
+    elif row["telegram_user"]:
+        data["origen"] = f"Telegram · {row['telegram_user']}"
+    else:
+        data["origen"] = "Sistema"
+    return data
 
 
 def count_audit() -> int:
