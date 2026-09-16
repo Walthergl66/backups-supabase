@@ -68,7 +68,7 @@ def _base_select(last_backup_join: bool = True) -> str:
             SELECT project_id, MAX(fecha) AS ultimo_backup,
                    (SELECT tamaño_archivo FROM backup_history bh2
                     WHERE bh2.project_id = bh.project_id AND bh2.resultado = 'ok'
-                    ORDER BY bh2.fecha DESC LIMIT 1) AS ultimo_tamano
+                    ORDER BY bh2.fecha DESC, bh2.id DESC LIMIT 1) AS ultimo_tamano
             FROM backup_history bh
             WHERE resultado = 'ok'
             GROUP BY project_id
