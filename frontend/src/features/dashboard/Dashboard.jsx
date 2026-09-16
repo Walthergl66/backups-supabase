@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getDashboard } from '../../services/dashboard.js'
-import { fmtFecha } from '../../utils/format.js'
+import { fmtFecha, fmtBytes } from '../../utils/format.js'
 import PageHead from '../../components/ui/PageHead.jsx'
 import { useToast } from '../../components/ui/Toast.jsx'
 import Badge from '../../components/ui/Badge.jsx'
@@ -78,7 +78,7 @@ export default function Dashboard() {
                         <div className="muted" style={{ fontSize: 11 }}>{p.nombre}</div>
                       </td>
                       <td className="muted">{ultimo ? fmtFecha(ultimo) : 'Sin backups'}</td>
-                      <td className="mono">-</td>
+                      <td className="mono">{fmtBytes(p.tamaño_archivo)}</td>
                       <td>
                         {!ultimo ? (
                           <Badge tone="mid">Pendiente</Badge>

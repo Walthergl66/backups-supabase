@@ -54,6 +54,7 @@ def _dict(row, include_secret: bool = False) -> dict | None:
         if not include_secret
         else crypto.decrypt(row["connection_encrypted"]),
         "ultimo_backup": row["ultimo_backup"] if "ultimo_backup" in row.keys() else None,
+        "tamaño_archivo": row["ultimo_tamano"] if "ultimo_tamano" in row.keys() else None,
     }
     if include_secret:
         data["connection_plain"] = crypto.decrypt(row["connection_encrypted"])
@@ -64,8 +65,11 @@ def _base_select(last_backup_join: bool = True) -> str:
     join = (
         """
         LEFT JOIN (
-            SELECT project_id, MAX(fecha) AS ultimo_backup
-            FROM backup_history
+            SELECT project_id, MAX(fecha) AS ultimo_backup,
+                   (SELECT tamaño_archivo FROM backup_history bh2
+                    WHERE bh2.project_id = bh.project_id AND bh2.resultado = 'ok'
+                    ORDER BY bh2.fecha DESC LIMIT 1) AS ultimo_tamano
+            FROM backup_history bh
             WHERE resultado = 'ok'
             GROUP BY project_id
         ) bh ON bh.project_id = p.id
@@ -74,7 +78,7 @@ def _base_select(last_backup_join: bool = True) -> str:
         else ""
     )
     return (
-        "SELECT p.*, a.nombre AS account_nombre, bh.ultimo_backup "
+        "SELECT p.*, a.nombre AS account_nombre, bh.ultimo_backup, bh.ultimo_tamano "
         f"FROM projects p JOIN accounts a ON a.id = p.account_id {join}"
     )
 
