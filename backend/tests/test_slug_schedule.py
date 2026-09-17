@@ -1,4 +1,4 @@
-"""Tests de slugify, validación de cron y borrado lógico."""
+"""Tests de slugify, validación de cron, borrado lógico y tamaño en dashboard."""
 
 import pytest
 
@@ -7,9 +7,11 @@ from services.projects import (
     _validate_schedule,
     create_project,
     delete_project,
+    list_projects,
     restore_project,
     slugify,
 )
+from services.backup_history import record
 
 
 def test_slugify_ascii_minusculas_y_guiones():
@@ -88,3 +90,17 @@ def test_restore_sin_slug_usa_el_original(db):
     row = db.fetch_one("SELECT slug, activo FROM projects WHERE id = ?", (pid,))
     assert row["activo"] == 1
     assert row["slug"] == "borrable"
+
+
+def test_list_projects_devuelve_tamano_del_ultimo_ok(db):
+    acc = db.execute("INSERT INTO accounts (nombre, pat_encrypted) VALUES ('A', 'x')")
+    pid = create_project(
+        slug="con-tamano", nombre="X", account_id=acc,
+        connection="postgresql://u:p@h/d", project_ref="ref123",
+    )
+    record(pid, resultado="ok", tamaño_archivo=1024.5)
+    record(pid, resultado="error", tamaño_archivo=512.0)
+    record(pid, resultado="ok", tamaño_archivo=2048.0)
+    projects = list_projects(only_active=True)
+    p = next(p for p in projects if p["id"] == pid)
+    assert p["tamaño_archivo"] == 2048.0
