@@ -2,21 +2,27 @@ import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { deleteProject, listProjects, restoreProject } from '../../services/projects.js'
 import { useAuth } from '../auth/AuthContext.jsx'
+import { useAbort, isAbortError } from '../../hooks/useAbort.js'
 import PageHead from '../../components/ui/PageHead.jsx'
 import { useToast } from '../../components/ui/Toast.jsx'
+import { useDialog } from '../../components/ui/ConfirmDialog.jsx'
 import Badge from '../../components/ui/Badge.jsx'
 
 export default function Projects() {
   const toast = useToast()
+  const { confirm, prompt } = useDialog()
+  const signal = useAbort()
   const [projects, setProjects] = useState([])
   const [error, setError] = useState('')
   const [params, setParams] = useSearchParams()
   const estado = params.get('estado') || 'activos'
 
   const load = () => {
-    listProjects(estado)
+    listProjects(estado, { signal })
       .then(setProjects)
-      .catch((e) => setError(e.message))
+      .catch((e) => {
+        if (!isAbortError(e)) setError(e.message)
+      })
   }
 
   useEffect(() => {
@@ -31,7 +37,12 @@ export default function Projects() {
   }, [error])
 
   const del = async (p) => {
-    if (!window.confirm(`¿Eliminar el proyecto "${p.slug}"? Se conserva su historial.`)) return
+    const ok = await confirm(`¿Eliminar el proyecto "${p.slug}"? Se conserva su historial.`, {
+      title: 'Eliminar proyecto',
+      confirmLabel: 'Eliminar',
+      danger: true,
+    })
+    if (!ok) return
     try {
       await deleteProject(p.id)
       toast.ok(`Proyecto "${p.slug}" eliminado.`)
@@ -42,7 +53,11 @@ export default function Projects() {
   }
 
   const restore = async (p) => {
-    const slug = window.prompt('Slug para restaurar:', p.slug.replace(/^\(eliminado\)-\d+-/, ''))
+    const slug = await prompt('Indica el slug con el que se restaurará el proyecto:', {
+      title: 'Restaurar proyecto',
+      confirmLabel: 'Restaurar',
+      initial: p.slug.replace(/^\(eliminado\)-\d+-/, ''),
+    })
     if (slug == null) return
     try {
       await restoreProject(p.id, slug)

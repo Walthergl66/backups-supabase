@@ -365,6 +365,22 @@ table.t tr.empty td { text-align: center; color: var(--muted); padding: 40px 20p
   backdrop-filter: blur(3px);
 }
 
+/* Diálogos controlados (reemplazan window.confirm/prompt) */
+.dimmer.diag {
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.diag-card {
+  width: min(440px, 100%);
+  background: #0d162b;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 26px 28px;
+  box-shadow: 0 30px 60px -26px rgba(2, 6, 23, 0.95);
+}
+.diag-card h3 { font-size: 17px; letter-spacing: -0.01em; margin: 0 0 10px; }
+.diag-card p { color: var(--muted); font-size: 14.5px; line-height: 1.55; margin: 0 0 22px; }
+.diag-actions { display: flex; justify-content: flex-end; gap: 12px; }
+
 /* ---------------- flash / toast ---------------- */
 .flash {
   display: flex; align-items: flex-start; gap: 11px;
