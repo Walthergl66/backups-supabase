@@ -28,8 +28,10 @@ def _login(client, user_id=None, code=None):
 
 
 def _secret_for(user_id):
-    row = db.fetch_one("SELECT totp_secret FROM web_users WHERE id = ?", (user_id,))
-    return row["totp_secret"]
+    row = db.fetch_one(
+        "SELECT totp_secret, totp_pending_secret FROM web_users WHERE id = ?", (user_id,)
+    )
+    return row["totp_pending_secret"] or row["totp_secret"]
 
 
 def test_login_sin_2fa_funciona(db):
@@ -124,3 +126,39 @@ def test_totp_endpoints_requieren_auth(client):
     assert c.post("/api/auth/totp/setup").status_code == 401
     assert c.post("/api/auth/totp/confirm", json={"code": "123456"}).status_code == 401
     assert c.post("/api/auth/totp/disable", json={"code": "123456"}).status_code == 401
+
+
+def test_resetup_no_desactiva_2fa_sin_codigo(client, db):
+    """Regresión: /totp/setup no apaga el 2FA en silencio con una sesión sin 2FA."""
+    c, user_id = client
+    tok = _login(c).json()["access_token"]
+    c.post("/api/auth/totp/setup", headers={"Authorization": f"Bearer {tok}"})
+    first_code = pyotp.TOTP(_secret_for(user_id)).now()
+    c.post("/api/auth/totp/confirm", json={"code": first_code},
+           headers={"Authorization": f"Bearer {tok}"})
+    assert web_users_srv.totp_enabled_for(user_id) is True
+
+    # Sin el código actual el setup se rechaza y el 2FA sigue activo.
+    r = c.post("/api/auth/totp/setup", headers={"Authorization": f"Bearer {tok}"})
+    assert r.status_code == 400
+    assert web_users_srv.totp_enabled_for(user_id) is True
+    assert _login(c).status_code == 401  # el login sigue pidiendo el 2FA original
+
+    # Con el código actual sí se re-registra: el secreto nuevo queda pendiente
+    # y el activo sigue intacto hasta confirmar.
+    r = c.post("/api/auth/totp/setup", json={"code": first_code},
+               headers={"Authorization": f"Bearer {tok}"})
+    assert r.status_code == 200
+    assert web_users_srv.totp_enabled_for(user_id) is True
+    assert _login(c, code=first_code).status_code == 200  # código original sigue valiendo
+
+    pending = db.fetch_one(
+        "SELECT totp_pending_secret AS s FROM web_users WHERE id = ?", (user_id,)
+    )["s"]
+    assert pending == r.json()["secret"]
+    new_code = pyotp.TOTP(pending).now()
+    r = c.post("/api/auth/totp/confirm", json={"code": new_code},
+               headers={"Authorization": f"Bearer {tok}"})
+    assert r.status_code == 200
+    assert web_users_srv.totp_enabled_for(user_id) is True
+    assert web_users_srv.verify_totp_code(user_id, new_code) is True

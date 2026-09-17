@@ -45,6 +45,7 @@ def _migrate() -> None:
         "ALTER TABLE projects ADD COLUMN archived INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE web_users ADD COLUMN totp_secret TEXT",
         "ALTER TABLE web_users ADD COLUMN totp_enabled INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE web_users ADD COLUMN totp_pending_secret TEXT",
         """
         CREATE TABLE IF NOT EXISTS refresh_sessions (
             id         INTEGER PRIMARY KEY AUTOINCREMENT,

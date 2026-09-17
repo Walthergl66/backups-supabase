@@ -180,10 +180,19 @@ async def refresh_token(request: Request):
 
 
 @router.post("/totp/setup")
-async def totp_setup(user: dict = Depends(get_current_user)):
-    """Genera un secreto TOTP pendiente para el usuario actual (devuelve QR)."""
+async def totp_setup(request: Request, user: dict = Depends(get_current_user)):
+    """Genera un secreto TOTP pendiente para el usuario actual (devuelve QR).
+
+    Si el 2FA ya está activo, exige el `code` actual para poder re-registrar
+    el dispositivo: una sesión sin pasar el 2FA no puede desactivar el factor
+    en silencio.
+    """
     try:
-        result = web_users_srv.generate_totp_secret(user["id"])
+        try:
+            data = await request.json()
+        except Exception:  # noqa: BLE001
+            data = {}
+        result = web_users_srv.generate_totp_secret(user["id"], data.get("code") or None)
     except web_users_srv.WebUserError as exc:
         return JSONResponse({"detail": str(exc)}, status_code=400)
     audit_srv.log_action("totp_setup", "ok", web_user_id=user["id"])

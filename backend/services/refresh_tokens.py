@@ -42,26 +42,50 @@ class RefreshTokenStore:
         return token
 
     def validate_and_rotate(self, token: str) -> tuple[str, dict] | None:
-        """Valida el token; si es válido lo invalida y emite uno nuevo (rotación)."""
+        """Valida el token; si es válido lo invalida y emite uno nuevo (rotación).
+
+        La validación, la revocación y la emisión se hacen en una única
+        transacción. El `DELETE` es el que da el derecho único: si otro hilo
+        o petición ya rotó/revocó el mismo token (replay), no borra ninguna
+        fila y esta llamada se descarta sin emitir una sesión nueva, de modo
+        que el mismo token nunca genera dos sesiones válidas a la vez.
+        """
         if not token:
             return None
-        self._purge_expired()
+        now = time.time()
         token_hash = _hash_token(token)
-        row = db.fetch_one(
-            "SELECT user_id, username, rol FROM refresh_sessions WHERE token_hash = ? AND expires_at > ?",
-            (token_hash, time.time()),
-        )
-        if row is None:
-            return None
-        db.execute("DELETE FROM refresh_sessions WHERE token_hash = ?", (token_hash,))
+        with db.connect() as conn:
+            conn.execute("DELETE FROM refresh_sessions WHERE expires_at <= ?", (now,))
+            row = conn.execute(
+                "SELECT user_id, username, rol FROM refresh_sessions "
+                "WHERE token_hash = ? AND expires_at > ?",
+                (token_hash, now),
+            ).fetchone()
+            if row is None:
+                return None
+            cur = conn.execute("DELETE FROM refresh_sessions WHERE token_hash = ?", (token_hash,))
+            if cur.rowcount == 0:
+                return None
+            new_token = secrets.token_urlsafe(48)
+            conn.execute(
+                "INSERT INTO refresh_sessions (token_hash, user_id, username, rol, created_at, expires_at) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (_hash_token(new_token), row["user_id"], row["username"], row["rol"],
+                 now, now + settings().refresh_ttl_seconds),
+            )
         entry = {
             "id": row["user_id"],
             "user_id": row["user_id"],
             "username": row["username"],
             "rol": row["rol"],
         }
-        new_token = self.create(entry)
         return new_token, entry
+
+    def revoke_user_sessions(self, user_id: int) -> int:
+        """Revoca todas las sesiones de un usuario (p. ej. tras cambiar su password)."""
+        with db.connect() as conn:
+            cur = conn.execute("DELETE FROM refresh_sessions WHERE user_id = ?", (user_id,))
+            return cur.rowcount
 
     def revoke(self, token: str) -> None:
         if not token:

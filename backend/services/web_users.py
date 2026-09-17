@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 import pyotp
 
 from core import db, security
+from services import refresh_tokens
 
 MAX_FAILED_ATTEMPTS = 8
 LOCKOUT_MINUTES = 15
@@ -167,7 +168,8 @@ def update_web_user(
             raise WebUserError(
                 "No se puede degradar o desactivar al último administrador activo."
             )
-    if password is not None and password.strip():
+    password_changed = password is not None and bool(password.strip())
+    if password_changed:
         if len(password.strip()) < MIN_PASSWORD_LENGTH:
             raise WebUserError(f"La contraseña debe tener al menos {MIN_PASSWORD_LENGTH} caracteres.")
         db.execute(
@@ -182,6 +184,10 @@ def update_web_user(
             "failed_attempts = 0, locked_until = NULL WHERE id = ?",
             (new_username, new_rol, new_activo, user_id),
         )
+    # Una contraseña reseteada o una cuenta desactivada invalida de inmediato
+    # todas sus sesiones web, sin esperar a la próxima rotación del refresh.
+    if password_changed or not new_activo:
+        refresh_tokens.refresh_store.revoke_user_sessions(user_id)
 
 
 def delete_web_user(user_id: int) -> None:
@@ -209,13 +215,23 @@ def totp_enabled_for(user_id: int) -> bool:
     return bool(row and row["totp_enabled"])
 
 
-def generate_totp_secret(user_id: int) -> dict:
-    """Genera (y guarda pendiente de confirmación) un secreto TOTP para un usuario."""
+def generate_totp_secret(user_id: int, code: str | None = None) -> dict:
+    """Genera (y guarda pendiente de confirmación) un secreto TOTP para un usuario.
+
+    Nunca desactiva un 2FA ya activo de forma silenciosa: si la cuenta ya
+    tiene TOTP habilitado se exige el código actual, y el secreto nuevo queda
+    en `totp_pending_secret` sin tocar el secreto en uso hasta el `confirm`.
+    Así una sesión capturada sin pasar el 2FA no puede apagar la verificación
+    de otro usuario, y quien re-registra su dispositivo no se queda sin factor.
+    """
     user = _get_raw(user_id)
     if user is None:
         raise WebUserError("El usuario no existe.")
+    if user.get("totp_enabled"):
+        if not _totp_valid(user.get("totp_secret") or "", code or ""):
+            raise WebUserError("El código TOTP actual es incorrecto o ha caducado.")
     secret = pyotp.random_base32()
-    db.execute("UPDATE web_users SET totp_secret = ?, totp_enabled = 0 WHERE id = ?",
+    db.execute("UPDATE web_users SET totp_pending_secret = ? WHERE id = ?",
                (secret, user_id))
     otpauth = pyotp.totp.TOTP(secret).provisioning_uri(
         name=user["username"], issuer_name=TOTP_ISSUER
@@ -228,11 +244,15 @@ def confirm_totp(user_id: int, code: str) -> None:
     user = _get_raw(user_id)
     if user is None:
         raise WebUserError("El usuario no existe.")
-    if not user.get("totp_secret"):
-        raise WebUserError("No hay un secreto TOTP pendiente.")
-    if not _totp_valid(user["totp_secret"], code):
+    if not user.get("totp_pending_secret"):
+        raise WebUserError("No hay un secreto TOTP pendiente de confirmar.")
+    if not _totp_valid(user["totp_pending_secret"], code):
         raise WebUserError("El código TOTP es incorrecto o ha caducado.")
-    db.execute("UPDATE web_users SET totp_enabled = 1 WHERE id = ?", (user_id,))
+    db.execute(
+        "UPDATE web_users SET totp_secret = ?, totp_pending_secret = NULL, totp_enabled = 1 "
+        "WHERE id = ?",
+        (user["totp_pending_secret"], user_id),
+    )
 
 
 def disable_totp(user_id: int, code: str) -> None:
