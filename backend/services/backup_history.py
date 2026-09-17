@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from core import db
 
@@ -52,7 +52,11 @@ def last_ok(project_id: int) -> dict | None:
 
 def purge_old(days: int) -> int:
     """Borra historial anterior a `days` días. Devuelve nº borrado."""
-    cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
+    # `fecha` se guarda en UTC; el corte de retención debe calcularse en UTC
+    # (naive) para comparar con las cadenas almacenadas por SQLite.
+    cutoff = (
+        datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=days)
+    ).strftime("%Y-%m-%d %H:%M:%S")
     with db.connect() as conn:
         cur = conn.execute("DELETE FROM backup_history WHERE fecha < ?", (cutoff,))
         return cur.rowcount

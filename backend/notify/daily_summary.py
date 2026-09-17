@@ -27,14 +27,24 @@ def _local_now() -> datetime:
     return datetime.now(timezone.utc).astimezone(tz)
 
 
+def _display_local(value: str, tz: ZoneInfo) -> str:
+    """Convierte una fecha UTC almacenada a la zona local configurada."""
+    dt = _parse(value)
+    if dt is None:
+        return (value or "").strip()
+    return dt.replace(tzinfo=timezone.utc).astimezone(tz).strftime(_TIME_FMT)
+
+
 def build_daily_summary() -> str:
     active = projects.list_projects(only_active=True)
     if not active:
         return ""
 
-    now = datetime.now()
+    # `fecha` se guarda en UTC: el corte de "sin backup OK" se calcula en UTC.
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     cutoff = now - timedelta(hours=STALE_HOURS)
     local = _local_now()
+    tz = local.tzinfo
     lines: list[str] = ["📊 Resumen diario de backups", ""]
     stale_count = 0
 
@@ -51,15 +61,19 @@ def build_daily_summary() -> str:
         ok_when = _parse(ok["fecha"])
         if ok_when is None or ok_when < cutoff:
             lines.append(
-                f"• <b>{p['slug']}</b> — ⚠️ sin backup OK desde {ok['fecha']} (> {STALE_HOURS} h)"
+                f"• <b>{p['slug']}</b> — ⚠️ sin backup OK desde "
+                f"{_display_local(ok['fecha'], tz)} (> {STALE_HOURS} h)"
             )
             stale_count += 1
         else:
             size = f" · {ok['tamaño_archivo']:,.0f} MB" if ok.get("tamaño_archivo") else ""
-            lines.append(f"• {p['slug']} — backup OK {ok['fecha']}{size}")
+            lines.append(f"• {p['slug']} — backup OK {_display_local(ok['fecha'], tz)}{size}")
 
         if err is not None and (ok is None or _parse(err["fecha"]) > _parse(ok["fecha"])):
-            lines.append(f"  └─ ⚠️ último intento falló: {err.get('detalle') or 'error'} ({err['fecha']})")
+            lines.append(
+                f"  └─ ⚠️ último intento falló: {err.get('detalle') or 'error'} "
+                f"({_display_local(err['fecha'], tz)})"
+            )
 
     lines.insert(1, f"<b>{local.strftime('%Y-%m-%d %H:%M')}</b> · {len(active)} proyectos activos · {stale_count} con riesgo")
 
