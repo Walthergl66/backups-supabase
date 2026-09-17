@@ -1,8 +1,8 @@
 import { api } from './http.js'
 
-export const listWebUsers = () => api.get('/api/web-users')
+export const listWebUsers = (options) => api.get('/api/web-users', options)
 
-export const getWebUser = (id) => api.get(`/api/web-users/${id}`)
+export const getWebUser = (id, options) => api.get(`/api/web-users/${id}`, options)
 
 export const createWebUser = (data) => api.post('/api/web-users', data)
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { listBackups } from '../../services/backups.js'
+import { useAbort, isAbortError } from '../../hooks/useAbort.js'
 import { fmtBytes, fmtFecha } from '../../utils/format.js'
 import PageHead from '../../components/ui/PageHead.jsx'
 import { useToast } from '../../components/ui/Toast.jsx'
@@ -11,12 +12,17 @@ const PAGE_SIZE = 50
 
 export default function Backups() {
   const toast = useToast()
+  const signal = useAbort()
   const [data, setData] = useState(null)
   const [page, setPage] = useState(1)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    listBackups(page, PAGE_SIZE).then(setData).catch((e) => setError(e.message))
+    listBackups(page, PAGE_SIZE, { signal })
+      .then(setData)
+      .catch((e) => {
+        if (!isAbortError(e)) setError(e.message)
+      })
   }, [page])
 
   useEffect(() => {

@@ -125,14 +125,14 @@ export default function ImportProjects() {
         <div className="card-body">
           <div className="form-grid">
             <div className="field">
-              <label className="label">Token de acceso (PAT)</label>
-              <input className="input mono" type="password" value={pat} onChange={(e) => setPat(e.target.value)} required
+              <label className="label" htmlFor="imp-pat">Token de acceso (PAT)</label>
+              <input id="imp-pat" className="input mono" type="password" value={pat} onChange={(e) => setPat(e.target.value)} required
                 placeholder="sbp_…" autoComplete="off" />
               <div className="hint">Se usa solo para listar tus proyectos y obtener su conexión. No se guarda.</div>
             </div>
             <div className="field">
-              <label className="label">Nombre para la cuenta (opcional)</label>
-              <input className="input" value={accountName} onChange={(e) => setAccountName(e.target.value)}
+              <label className="label" htmlFor="imp-account">Nombre para la cuenta (opcional)</label>
+              <input id="imp-account" className="input" value={accountName} onChange={(e) => setAccountName(e.target.value)}
                 placeholder="Importada desde bot" />
             </div>
           </div>
@@ -161,8 +161,8 @@ export default function ImportProjects() {
           <div className="card-body">
             <div className="form-grid">
               <div className="field">
-                <label className="label">Contraseña de la base de datos</label>
-                <input className="input mono" type="password" value={dbPassword} onChange={(e) => setDbPassword(e.target.value)}
+                <label className="label" htmlFor="imp-dbpass">Contraseña de la base de datos</label>
+                <input id="imp-dbpass" className="input mono" type="password" value={dbPassword} onChange={(e) => setDbPassword(e.target.value)}
                   placeholder="[YOUR-PASSWORD]" autoComplete="off" />
                 <div className="hint">
                   Opcional. Se inyecta automáticamente en la connection string del pooler de cada proyecto
@@ -170,8 +170,8 @@ export default function ImportProjects() {
                 </div>
               </div>
               <div className="field">
-                <label className="label">Modo del pooler</label>
-                <select className="select" value={poolerMode} onChange={(e) => setPoolerMode(e.target.value)}>
+                <label className="label" htmlFor="imp-pooler">Modo del pooler</label>
+                <select id="imp-pooler" className="select" value={poolerMode} onChange={(e) => setPoolerMode(e.target.value)}>
                   <option value="session">Session (:5432) — recomendado para pg_dump</option>
                   <option value="transaction">Transaction (:6543)</option>
                 </select>
@@ -189,17 +189,17 @@ export default function ImportProjects() {
           <div className="card-body">
             <div className="form-grid">
               <div className="field">
-                <label className="label">Nombre para mostrar</label>
-                <input className="input" value={tgNombre} onChange={(e) => setTgNombre(e.target.value)} required placeholder="Nombre o @alias" />
+                <label className="label" htmlFor="imp-tgnombre">Nombre para mostrar</label>
+                <input id="imp-tgnombre" className="input" value={tgNombre} onChange={(e) => setTgNombre(e.target.value)} required placeholder="Nombre o @alias" />
               </div>
               <div className="field">
-                <label className="label">Chat ID de Telegram</label>
-                <input className="input mono" value={tgChat} onChange={(e) => setTgChat(e.target.value)} required placeholder="123456789" />
+                <label className="label" htmlFor="imp-tgchat">Chat ID de Telegram</label>
+                <input id="imp-tgchat" className="input mono" value={tgChat} onChange={(e) => setTgChat(e.target.value)} required placeholder="123456789" />
                 <div className="hint">ID numérico del chat con el bot.</div>
               </div>
               <div className="field">
-                <label className="label">Rol</label>
-                <select className="select" value={tgRol} onChange={(e) => setTgRol(e.target.value)}>
+                <label className="label" htmlFor="imp-tgrol">Rol</label>
+                <select id="imp-tgrol" className="select" value={tgRol} onChange={(e) => setTgRol(e.target.value)}>
                   <option value="usuario">usuario</option>
                   <option value="admin">admin</option>
                 </select>

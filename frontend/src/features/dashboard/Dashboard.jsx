@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getDashboard } from '../../services/dashboard.js'
+import { useAbort, isAbortError } from '../../hooks/useAbort.js'
 import { fmtFecha, fmtBytes } from '../../utils/format.js'
 import PageHead from '../../components/ui/PageHead.jsx'
 import { useToast } from '../../components/ui/Toast.jsx'
@@ -16,11 +17,16 @@ const tiles = [
 
 export default function Dashboard() {
   const toast = useToast()
+  const signal = useAbort()
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    getDashboard().then(setData).catch((e) => setError(e.message))
+    getDashboard({ signal })
+      .then(setData)
+      .catch((e) => {
+        if (!isAbortError(e)) setError(e.message)
+      })
   }, [])
 
   useEffect(() => {

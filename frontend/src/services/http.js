@@ -92,8 +92,8 @@ async function request(path, options = {}) {
 }
 
 export const api = {
-  get: (path) => request(path),
-  post: (path, body) => request(path, { method: 'POST', body: JSON.stringify(body ?? {}) }),
-  put: (path, body) => request(path, { method: 'PUT', body: JSON.stringify(body ?? {}) }),
-  del: (path) => request(path, { method: 'DELETE' }),
+  get: (path, options = {}) => request(path, options),
+  post: (path, body, options = {}) => request(path, { ...options, method: 'POST', body: JSON.stringify(body ?? {}) }),
+  put: (path, body, options = {}) => request(path, { ...options, method: 'PUT', body: JSON.stringify(body ?? {}) }),
+  del: (path, options = {}) => request(path, { ...options, method: 'DELETE' }),
 }

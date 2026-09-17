@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { createWebUser, getWebUser, updateWebUser } from '../../services/webUsers.js'
+import { useAbort, isAbortError } from '../../hooks/useAbort.js'
 import { ApiError } from '../../services/http.js'
 import PageHead from '../../components/ui/PageHead.jsx'
 import { useToast } from '../../components/ui/Toast.jsx'
@@ -10,6 +11,7 @@ export default function WebUserForm() {
   const editing = Boolean(id)
   const navigate = useNavigate()
   const toast = useToast()
+  const signal = useAbort()
 
   const [form, setForm] = useState({ username: '', password: '', rol: 'admin', activo: true })
   const [error, setError] = useState('')
@@ -17,9 +19,11 @@ export default function WebUserForm() {
 
   useEffect(() => {
     if (!id) return
-    getWebUser(id)
+    getWebUser(id, { signal })
       .then((u) => setForm((f) => ({ ...f, username: u.username, rol: u.rol, activo: u.activo !== false })))
-      .catch((e) => setError(e.message))
+      .catch((e) => {
+        if (!isAbortError(e)) setError(e.message)
+      })
   }, [id])
 
   useEffect(() => {
@@ -60,18 +64,18 @@ export default function WebUserForm() {
         <div className="card-body">
           <form onSubmit={submit}>
             <div className="field">
-              <label className="label">Nombre de usuario</label>
-              <input className="input" value={form.username} onChange={set('username')} required autoComplete="off" />
+              <label className="label" htmlFor="wu-username">Nombre de usuario</label>
+              <input id="wu-username" className="input" value={form.username} onChange={set('username')} required autoComplete="off" />
             </div>
             <div className="field">
-              <label className="label">{editing ? 'Nueva contraseña' : 'Contraseña'}</label>
-              <input className="input" type="password" value={form.password}
+              <label className="label" htmlFor="wu-password">{editing ? 'Nueva contraseña' : 'Contraseña'}</label>
+              <input id="wu-password" className="input" type="password" value={form.password}
                 onChange={set('password')} required={!editing} placeholder="mínimo 8 caracteres" autoComplete="new-password" />
               <div className="hint">{editing ? 'Vacía para no cambiarla.' : ''}</div>
             </div>
             <div className="field">
-              <label className="label">Rol de acceso</label>
-              <select className="select" value={form.rol} onChange={set('rol')}>
+              <label className="label" htmlFor="wu-rol">Rol de acceso</label>
+              <select id="wu-rol" className="select" value={form.rol} onChange={set('rol')}>
                 <option value="admin">admin</option>
                 <option value="viewer">viewer</option>
               </select>

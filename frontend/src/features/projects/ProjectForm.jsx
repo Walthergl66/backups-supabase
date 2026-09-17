@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { createProject, getProject, updateProject } from '../../services/projects.js'
 import { listAccounts } from '../../services/accounts.js'
+import { useAbort, isAbortError } from '../../hooks/useAbort.js'
 import { ApiError } from '../../services/http.js'
 import PageHead from '../../components/ui/PageHead.jsx'
 import { useToast } from '../../components/ui/Toast.jsx'
@@ -11,6 +12,7 @@ export default function ProjectForm() {
   const editing = Boolean(id)
   const navigate = useNavigate()
   const toast = useToast()
+  const signal = useAbort()
 
   const [accounts, setAccounts] = useState([])
   const [form, setForm] = useState({
@@ -20,7 +22,9 @@ export default function ProjectForm() {
   const [sending, setSending] = useState(false)
 
   useEffect(() => {
-    listAccounts().then(setAccounts).catch((e) => setError(e.message))
+    listAccounts({ signal }).then(setAccounts).catch((e) => {
+      if (!isAbortError(e)) setError(e.message)
+    })
   }, [])
 
   useEffect(() => {
@@ -30,7 +34,7 @@ export default function ProjectForm() {
 
   useEffect(() => {
     if (!id) return
-    getProject(id)
+    getProject(id, { signal })
       .then((p) => {
         setForm({
           slug: p.slug || '',
@@ -41,7 +45,9 @@ export default function ProjectForm() {
           activo: p.activo !== false,
         })
       })
-      .catch((e) => setError(e.message))
+      .catch((e) => {
+        if (!isAbortError(e)) setError(e.message)
+      })
   }, [id])
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
@@ -84,17 +90,17 @@ export default function ProjectForm() {
           <form onSubmit={submit}>
             <div className="form-grid">
               <div className="field">
-                <label className="label">Nombre corto (slug)</label>
-                <input className="input" value={form.slug} onChange={set('slug')} placeholder="mi-proyecto" required disabled={editing} />
+                <label className="label" htmlFor="proj-slug">Nombre corto (slug)</label>
+                <input id="proj-slug" className="input" value={form.slug} onChange={set('slug')} placeholder="mi-proyecto" required disabled={editing} />
                 <div className="hint">Minúsculas, números y guiones. No se puede cambiar después.</div>
               </div>
               <div className="field">
-                <label className="label">Nombre visible</label>
-                <input className="input" value={form.nombre} onChange={set('nombre')} required />
+                <label className="label" htmlFor="proj-nombre">Nombre visible</label>
+                <input id="proj-nombre" className="input" value={form.nombre} onChange={set('nombre')} required />
               </div>
               <div className="field">
-                <label className="label">Cuenta de Supabase</label>
-                <select className="select" value={form.account_id} onChange={set('account_id')} required>
+                <label className="label" htmlFor="proj-account">Cuenta de Supabase</label>
+                <select id="proj-account" className="select" value={form.account_id} onChange={set('account_id')} required>
                   <option value="" disabled>Selecciona una cuenta…</option>
                   {accounts.map((a) => (
                     <option key={a.id} value={a.id}>{a.nombre}</option>
@@ -102,15 +108,15 @@ export default function ProjectForm() {
                 </select>
               </div>
               <div className="field">
-                <label className="label">Referencia del proyecto (ref)</label>
-                <input className="input mono" value={form.project_ref} onChange={set('project_ref')} placeholder="xxxxxxxxxxxxxxxxxxxx" required />
+                <label className="label" htmlFor="proj-ref">Referencia del proyecto (ref)</label>
+                <input id="proj-ref" className="input mono" value={form.project_ref} onChange={set('project_ref')} placeholder="xxxxxxxxxxxxxxxxxxxx" required />
                 <div className="hint">Código del proyecto. Aparece en la URL de tu dashboard de Supabase.</div>
               </div>
             </div>
 
             <div className="field">
-              <label className="label">Conexión de la base de datos</label>
-              <input className="input mono" type="text" value={form.connection} onChange={set('connection')}
+              <label className="label" htmlFor="proj-connection">Conexión de la base de datos</label>
+              <input id="proj-connection" className="input mono" type="text" value={form.connection} onChange={set('connection')}
                 placeholder="postgresql://postgres:[PASSWORD]@db.xxxx.supabase.co:5432/postgres" required={!editing} />
               <div className="hint">
                 {editing ? 'Si la dejas vacía se conserva la actual (guardada cifrada).' : 'Se guarda cifrada al almacenarla.'}

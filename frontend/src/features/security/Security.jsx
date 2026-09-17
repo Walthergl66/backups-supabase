@@ -106,8 +106,9 @@ export default function Security() {
                 </div>
               )}
               <div className="field">
-                <label className="label">Código de verificación</label>
+                <label className="label" htmlFor="totp-enable-code">Código de verificación</label>
                 <input
+                  id="totp-enable-code"
                   className="input"
                   inputMode="numeric"
                   pattern="[0-9]*"
@@ -141,8 +142,9 @@ export default function Security() {
               </p>
               <form onSubmit={disable}>
                 <div className="field">
-                  <label className="label">Código de verificación</label>
+                  <label className="label" htmlFor="totp-disable-code">Código de verificación</label>
                   <input
+                    id="totp-disable-code"
                     className="input"
                     inputMode="numeric"
                     pattern="[0-9]*"
