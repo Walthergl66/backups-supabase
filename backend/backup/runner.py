@@ -122,6 +122,7 @@ def run_backup(project: dict) -> BackupResult:
         return BackupResult(ok=False, detalle=msg, duracion_seg=elapsed)
     except subprocess.TimeoutExpired:
         elapsed = time.monotonic() - start
+        dest.unlink(missing_ok=True)  # el .dump parcial en claro se borra
         msg = f"El backup excedió el límite de {settings().backup_timeout_seconds}s y fue cancelado."
         logger.error("Backup '%s': %s", slug, msg)
         return BackupResult(ok=False, detalle=msg, duracion_seg=elapsed)
@@ -161,15 +162,34 @@ def run_backup(project: dict) -> BackupResult:
         dest.unlink(missing_ok=True)
         return BackupResult(ok=False, detalle=msg, duracion_seg=elapsed, exit_code=proc.returncode)
 
-    sql_path = _to_sql(dest, slug)
+    try:
+        sql_path = _to_sql(dest, slug)
+    except Exception:  # noqa: BLE001 - red de seguridad: no cortar el .dump
+        logger.exception("Conversión a SQL de '%s' lanzó un error inesperado; se omite el .sql.", slug)
+        dest.with_suffix(".sql").unlink(missing_ok=True)
+        sql_path = None
     size_sql = sql_path.stat().st_size if sql_path is not None else 0.0
 
     try:
         dest_enc = _encrypt_and_remove(dest)
+    except Exception as exc:
+        msg = f"No se pudo cifrar el backup en disco: {exc}"
+        logger.error("Backup '%s': %s", slug, msg)
+        # El .dump en claro se conserva para no perder el backup (el barrido
+        # de claros del arranque lo eliminará); el .sql redundante se descarta.
+        if sql_path is not None:
+            sql_path.unlink(missing_ok=True)
+        return BackupResult(ok=False, detalle=msg, duracion_seg=elapsed, exit_code=proc.returncode)
+
+    try:
         sql_enc = _encrypt_and_remove(sql_path) if sql_path is not None else None
     except Exception as exc:
         msg = f"No se pudo cifrar el backup en disco: {exc}"
         logger.error("Backup '%s': %s", slug, msg)
+        # El .dump ya está cifrado y borrado del disco: un .sql en claro que
+        # no se pudo cifrar no aporta nada y se elimina.
+        if sql_path is not None:
+            sql_path.unlink(missing_ok=True)
         return BackupResult(ok=False, detalle=msg, duracion_seg=elapsed, exit_code=proc.returncode)
 
     removed = _apply_rotation(dest_dir, slug)
@@ -244,7 +264,7 @@ def _to_sql(dump_path: Path, slug: str) -> Path | None:
             shell=False,
             check=False,
         )
-    except OSError as exc:
+    except (OSError, subprocess.TimeoutExpired) as exc:
         logger.warning("Conversión a SQL '%s' no disponible: %s", dump_path.name, exc)
         sql_path.unlink(missing_ok=True)
         return None
