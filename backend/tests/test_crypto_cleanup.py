@@ -102,6 +102,48 @@ def test_run_backup_usa_verify_dump_y_completa(db, tmp_path, monkeypatch):
     cfg._settings = None
 
 
+def test_run_backup_borra_claro_si_falla_el_cifrado(db, tmp_path, monkeypatch):
+    """Regresión: si el cifrado del .dump falla, no queda ningún claro en disco."""
+    import subprocess
+    from backup import runner
+
+    monkeypatch.setenv("BACKUP_DIR", str(tmp_path / "backups"))
+    monkeypatch.setenv("BACKUP_KEEP_COUNT", "5")
+    import core.config as cfg
+    cfg._settings = None
+
+    def fake_run(args, **kwargs):
+        if "--list" in args:  # verify_dump
+            return subprocess.CompletedProcess(args, 0, stdout="Item 1\n", stderr="")
+        if args[0] == "pg_restore":  # conversión a SQL
+            out = Path(args[args.index("--file") + 1])
+            out.write_bytes(b"SELECT 1;")
+            return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+        dest = Path(args[args.index("--file") + 1])
+        dest.write_bytes(b"x" * 64)
+        return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+
+    def raise_enc(_plain, _enc):
+        raise RuntimeError("fallo forzado del cifrado")
+
+    monkeypatch.setattr(runner.subprocess, "run", fake_run)
+    monkeypatch.setattr(runner, "_pg_dump_binary", lambda: "pg_dump")
+    monkeypatch.setattr(runner, "_pg_restore_binary", lambda: "pg_restore")
+    monkeypatch.setattr(runner.crypto_mod, "encrypt_file", raise_enc)
+
+    result = runner.run_backup(
+        {"id": 1, "slug": "nexo", "connection_plain": "postgresql://x:y@h/db"}
+    )
+
+    assert result.ok is False
+    assert "No se pudo cifrar" in result.detalle
+    dest_dir = tmp_path / "backups" / "nexo"
+    claros = list(dest_dir.glob("*.dump")) + list(dest_dir.glob("*.sql"))
+    assert claros == []
+
+    cfg._settings = None
+
+
 def test_backup_paths_unicos_en_mismo_segundo(db, tmp_path, monkeypatch):
     """El nombre lleva microsegundos: dos llamadas rápidas no comparten archivo."""
     monkeypatch.setenv("BACKUP_DIR", str(tmp_path / "backups"))

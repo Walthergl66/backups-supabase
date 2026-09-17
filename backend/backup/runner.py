@@ -199,8 +199,8 @@ def _run_backup(project: dict) -> BackupResult:
     except Exception as exc:
         msg = f"No se pudo cifrar el backup en disco: {exc}"
         logger.error("Backup '%s': %s", slug, msg)
-        # El .dump en claro se conserva para no perder el backup (el barrido
-        # de claros del arranque lo eliminará); el .sql redundante se descarta.
+        # _encrypt_and_remove ya eliminó el .dump en claro; el .sql redundante
+        # también se descarta. Ningún backup sin cifrar queda en disco.
         if sql_path is not None:
             sql_path.unlink(missing_ok=True)
         return BackupResult(ok=False, detalle=msg, duracion_seg=elapsed, exit_code=proc.returncode)
@@ -210,10 +210,8 @@ def _run_backup(project: dict) -> BackupResult:
     except Exception as exc:
         msg = f"No se pudo cifrar el backup en disco: {exc}"
         logger.error("Backup '%s': %s", slug, msg)
-        # El .dump ya está cifrado y borrado del disco: un .sql en claro que
-        # no se pudo cifrar no aporta nada y se elimina.
-        if sql_path is not None:
-            sql_path.unlink(missing_ok=True)
+        # El .dump ya está cifrado y el .sql en claro se eliminó dentro de
+        # _encrypt_and_remove: no queda texto plano de ambos a la intemperie.
         return BackupResult(ok=False, detalle=msg, duracion_seg=elapsed, exit_code=proc.returncode)
 
     removed = _apply_rotation(dest_dir, slug)
@@ -307,12 +305,17 @@ def _to_sql(dump_path: Path, slug: str) -> Path | None:
 def _encrypt_and_remove(plain: Path) -> Path:
     """Cifra un archivo de backup y borra su claro del disco.
 
-    Devuelve la ruta cifrada (`<nombre>.enc`). Si el cifrado falla, el
-    archivo en claro se conserva (para no perder el backup) y la excepción
-    se propaga; el llamador la convierte en fallo del backup.
+    Devuelve la ruta cifrada (`<nombre>.enc`). Si el cifrado falla, se
+    intenta eliminar el archivo en claro (un backup sin cifrar no debe
+    quedar durmiendo en disco) y la excepción se propaga; el llamador la
+    convierte en fallo del backup.
     """
     enc = Path(f"{plain}.enc")
-    crypto_mod.encrypt_file(plain, enc)
+    try:
+        crypto_mod.encrypt_file(plain, enc)
+    except Exception:
+        plain.unlink(missing_ok=True)
+        raise
     plain.unlink(missing_ok=True)
     return enc
 
