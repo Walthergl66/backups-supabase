@@ -152,11 +152,16 @@ async def refresh_token(request: Request):
         return JSONResponse({"detail": "Sesión expirada."}, status_code=401)
     new_refresh, entry = rotated
     raw_user = web_users_srv.get_web_user_by_id(entry["user_id"])
+    # Si el usuario fue eliminado o desactivado, se rechaza la renovación y se
+    # revoca la sesión: no seguimos rotando cookies de forma inútil.
+    if raw_user is None or not raw_user.get("activo"):
+        refresh_tokens.refresh_store.revoke(new_refresh)
+        return JSONResponse({"detail": "Sesión expirada."}, status_code=401)
     user = {
         "id": entry["user_id"],
-        "username": raw_user["username"] if raw_user else entry["username"],
-        "rol": raw_user["rol"] if raw_user else entry["rol"],
-        "totp_enabled": bool(raw_user and raw_user.get("totp_enabled")),
+        "username": raw_user["username"],
+        "rol": raw_user["rol"],
+        "totp_enabled": bool(raw_user.get("totp_enabled")),
     }
     token = create_token(user)
     response = JSONResponse(

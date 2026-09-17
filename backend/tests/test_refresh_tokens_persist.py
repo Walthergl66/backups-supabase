@@ -54,3 +54,36 @@ def test_podados_vencidos_se_descarta(db):
     db.execute("UPDATE refresh_sessions SET expires_at = ?", (time.time() - 10,))
     assert store.validate_and_rotate(token) is None
     assert db.fetch_one("SELECT COUNT(*) AS c FROM refresh_sessions")["c"] == 0
+
+
+def test_refresh_rechazado_si_usuario_desactivado(db):
+    from fastapi.testclient import TestClient
+    from api.app import app
+
+    uid = web_users.create_web_user("user1", "LargaSegura-2026", rol="viewer")
+    with TestClient(app) as c:
+        assert c.post("/api/auth/login", json={
+            "username": "user1", "password": "LargaSegura-2026",
+        }).status_code == 200
+        assert c.post("/api/auth/refresh").status_code == 200
+
+        web_users.update_web_user(uid, activo=False)
+
+        # Desactivado: la sesión deja de renovarse (y se revoca).
+        assert c.post("/api/auth/refresh").status_code == 401
+        assert c.post("/api/auth/refresh").status_code == 401
+
+
+def test_refresh_rechazado_si_usuario_eliminado(db):
+    from fastapi.testclient import TestClient
+    from api.app import app
+
+    uid = web_users.create_web_user("user1", "LargaSegura-2026", rol="viewer")
+    with TestClient(app) as c:
+        assert c.post("/api/auth/login", json={
+            "username": "user1", "password": "LargaSegura-2026",
+        }).status_code == 200
+
+        web_users.delete_web_user(uid)
+
+        assert c.post("/api/auth/refresh").status_code == 401

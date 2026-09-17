@@ -151,6 +151,22 @@ def update_web_user(
     new_rol = (rol or "").strip() or current["rol"]
     if new_rol not in ("admin", "viewer"):
         raise WebUserError("Rol inválido.")
+    new_activo = 1 if activo is None else int(activo)
+    # No permitir quedarse sin administradores: el último admin activo no
+    # puede degradarse a viewer ni desactivarse a sí mismo (mismo criterio
+    # que delete_web_user).
+    if (
+        current["rol"] == "admin"
+        and bool(current["activo"])
+        and (new_rol != "admin" or not new_activo)
+    ):
+        total = db.fetch_one(
+            "SELECT COUNT(*) AS c FROM web_users WHERE rol = 'admin' AND activo = 1"
+        )
+        if total and total["c"] <= 1:
+            raise WebUserError(
+                "No se puede degradar o desactivar al último administrador activo."
+            )
     if password is not None and password.strip():
         if len(password.strip()) < MIN_PASSWORD_LENGTH:
             raise WebUserError(f"La contraseña debe tener al menos {MIN_PASSWORD_LENGTH} caracteres.")
@@ -158,13 +174,13 @@ def update_web_user(
             "UPDATE web_users SET username = ?, password_hash = ?, rol = ?, activo = ?, "
             "failed_attempts = 0, locked_until = NULL WHERE id = ?",
             (new_username, security.hash_password(password.strip()), new_rol,
-             1 if activo is None else int(activo), user_id),
+             new_activo, user_id),
         )
     else:
         db.execute(
             "UPDATE web_users SET username = ?, rol = ?, activo = ?, "
             "failed_attempts = 0, locked_until = NULL WHERE id = ?",
-            (new_username, new_rol, 1 if activo is None else int(activo), user_id),
+            (new_username, new_rol, new_activo, user_id),
         )
 
 

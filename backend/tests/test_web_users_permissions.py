@@ -30,6 +30,21 @@ def test_role_invalido_rechazado(db):
         create_web_user("u1", "LargaSegura-2026", rol="admin2")
 
 
+def test_ultimo_admin_no_se_degrada_ni_desactiva(db):
+    uid = create_web_user("sole_admin", "LargaSegura-2026", rol="admin")
+    with pytest.raises(WebUserError):
+        update_web_user(uid, rol="viewer")
+    with pytest.raises(WebUserError):
+        update_web_user(uid, activo=False)
+
+    # Con un segundo admin activo, sí se permite degradar o desactivar.
+    create_web_user("admin2", "LargaSegura-2027", rol="admin")
+    update_web_user(uid, rol="viewer")
+    update_web_user(uid, rol="admin")
+    update_web_user(uid, activo=False)
+    update_web_user(uid, activo=True)
+
+
 def test_can_allowlist_bloquea_inyeccion(db):
     uid = create_user(12345, "Bot User")
     with pytest.raises(UserError):
