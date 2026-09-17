@@ -150,3 +150,32 @@ def test_list_projects_ok_parsea():
     with patch.object(api.httpx, "get", return_value=resp):
         out = api.list_projects("sbp_x")
     assert out == [{"ref": "abc", "name": "N", "status": "ACTIVE", "region": "us"}]
+
+
+# --- Guard de [YOUR-PASSWORD] en el guardado de proyectos ---
+
+def test_create_project_rechaza_placeholder(db):
+    """Regresión: nunca se guarda una cadena con [YOUR-PASSWORD] (los backups
+    fallarían con esa palabra como contraseña)."""
+    from services import projects as projects_srv
+
+    acc = db.execute("INSERT INTO accounts (nombre, pat_encrypted) VALUES ('A','x')")
+    conn = "postgresql://postgres.aaa:[YOUR-PASSWORD]@aws-0-us.pooler.supabase.com:5432/postgres"
+    with pytest.raises(projects_srv.ProjectError, match=r"YOUR-PASSWORD"):
+        projects_srv.create_project("mi_prod", "Mi Prod", acc, conn, "ref123")
+
+
+def test_update_project_rechaza_placeholder(db):
+    from services import projects as projects_srv
+
+    acc = db.execute("INSERT INTO accounts (nombre, pat_encrypted) VALUES ('A','x')")
+    pid = projects_srv.create_project(
+        "mi_prod", "Mi Prod", acc,
+        "postgresql://postgres.aaa:s3cret@aws-0-us.pooler.supabase.com:5432/postgres",
+        "ref123",
+    )
+    assert pid > 0
+    with pytest.raises(projects_srv.ProjectError, match=r"YOUR-PASSWORD"):
+        projects_srv.update_project(
+            pid, connection="postgresql://postgres.aaa:[YOUR-PASSWORD]@h/pg"
+        )

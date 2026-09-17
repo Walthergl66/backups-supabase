@@ -26,6 +26,10 @@ from services import users as users_srv
 logger = logging.getLogger(__name__)
 
 ADD_BD_SELECT, ADD_BD_SLUG, ADD_BD_CONNECTION = range(1, 4)
+ADD_BD_PASSWORD = 4
+
+# Marcador con el que Supabase devuelve la connection string sin contraseña.
+_PASSWORD_MARKER = "[YOUR-PASSWORD]"
 
 
 def build_conversation() -> ConversationHandler:
@@ -35,6 +39,7 @@ def build_conversation() -> ConversationHandler:
             ADD_BD_SELECT: [MessageHandler(filters.TEXT & ~filters.COMMAND, _addbd_select)],
             ADD_BD_SLUG: [MessageHandler(filters.TEXT & ~filters.COMMAND, _addbd_slug)],
             ADD_BD_CONNECTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, _addbd_connection)],
+            ADD_BD_PASSWORD: [MessageHandler(filters.TEXT & ~filters.COMMAND, _addbd_password)],
         },
         fallbacks=[CommandHandler("cancel", _cancel)],
     )
@@ -157,6 +162,15 @@ async def _addbd_slug(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     connection = await asyncio.to_thread(api_srv.get_connection_string, pat, selected["ref"])
 
     if connection:
+        if _PASSWORD_MARKER in connection:
+            context.user_data["addbd_connection"] = connection
+            await notify_mod.send_message(
+                context.bot, chat_id,
+                "Supabase entregó la cadena con [YOUR-PASSWORD].\n"
+                "Envía la contraseña de la BD del proyecto:\n"
+                "(se guardará, cifrada, dentro de la cadena de conexión)"
+            )
+            return ADD_BD_PASSWORD
         context.user_data["addbd_connection"] = connection
         await _create_project_from_selection(update, context)
         return ConversationHandler.END
@@ -183,7 +197,42 @@ async def _addbd_connection(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         )
         return ADD_BD_CONNECTION
 
+    if _PASSWORD_MARKER in connection:
+        context.user_data["addbd_connection"] = connection
+        await notify_mod.send_message(
+            context.bot, chat_id,
+            "La cadena incluye [YOUR-PASSWORD].\n"
+            "Envía la contraseña de la BD:\n"
+            "(se guardará, cifrada, dentro de la cadena de conexión)"
+        )
+        return ADD_BD_PASSWORD
+
     context.user_data["addbd_connection"] = connection
+    await _create_project_from_selection(update, context)
+    return ConversationHandler.END
+
+
+async def _addbd_password(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    chat_id = update.effective_chat.id
+    password = update.message.text.strip()
+    if not password:
+        await notify_mod.send_message(
+            context.bot, chat_id,
+            "La contraseña no puede estar vacía. Envíala de nuevo o usa /cancel."
+        )
+        return ADD_BD_PASSWORD
+
+    connection = context.user_data.get("addbd_connection", "")
+    final_connection = api_srv._inject_password(connection, password)
+    if not final_connection or _PASSWORD_MARKER in final_connection:
+        await notify_mod.send_message(
+            context.bot, chat_id,
+            "No pude insertar la contraseña en la cadena de conexión. "
+            "Revisa el formato e inténtalo de nuevo o usa /cancel."
+        )
+        return ADD_BD_PASSWORD
+
+    context.user_data["addbd_connection"] = final_connection
     await _create_project_from_selection(update, context)
     return ConversationHandler.END
 

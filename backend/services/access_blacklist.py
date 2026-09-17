@@ -26,7 +26,7 @@ class AccessBlacklist:
         with self._lock:
             self._prune_locked(time.time())
             if len(self._entries) >= self._max_size:
-                self._entries.clear()
+                self._evict_oldest_locked()
             self._entries[jti] = exp
 
     def is_revoked(self, jti: str | None) -> bool:
@@ -35,6 +35,19 @@ class AccessBlacklist:
         with self._lock:
             self._prune_locked(time.time())
             return jti in self._entries
+
+    def _evict_oldest_locked(self) -> None:
+        """Expulsa las entradas más próximas a expirar para no sobrepasar el límite.
+
+        Nunca vacía la lista: un token revocado sigue inválido hasta que expira
+        por sí solo. Las revocadas se descartan solo cuando su `exp` las
+        invalidaría igualmente.
+        """
+        overflow = len(self._entries) - (self._max_size - 1)
+        if overflow <= 0:
+            return
+        for jti in sorted(self._entries, key=self._entries.get)[:overflow]:
+            del self._entries[jti]
 
     def _prune_locked(self, now: float) -> None:
         # La poda es barata y se ejecuta como mucho una vez por minuto.

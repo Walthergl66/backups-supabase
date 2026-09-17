@@ -105,18 +105,33 @@ def sync_new_backups(notify: bool = True) -> dict:
 
 
 def _apply_retention(client, cfg, keys: list[str], bucket: str | None = None) -> int:
-    """Borra los objetos más antiguos (por orden alfabético) por encima de keep_count."""
+    """Borra los objetos más antiguos por encima de keep_count, POR PROYECTO.
+
+    Los archivos viven en `prefix/<slug>/<slug>_fecha.dump.enc`, así que se
+    agrupan por subcarpeta (proyecto) y se conservan los `keep` más recientes
+    de cada uno. Ordenar de forma global y alfabética mezclaba los proyectos:
+    un slug que empezara antes ('a' vs 'b') acaparaba el límite y podía borrar
+    los respaldos recientes de otro proyecto.
+    """
     keep = max(1, cfg.offsite_keep_count)
     bucket = bucket or cfg.offsite_bucket
-    if len(keys) <= keep:
+    if not keys:
         return 0
-    ordered = sorted(keys)[: len(keys) - keep]
-    if not ordered:
-        return 0
+
+    groups: dict[str, list[str]] = {}
+    for key in keys:
+        parent, _, _ = key.rpartition("/")
+        project = parent.rsplit("/", 1)[-1] if parent else key
+        groups.setdefault(project, []).append(key)
+
     deleted = 0
-    for key in ordered:
-        client.delete_object(Bucket=bucket, Key=key)
-        deleted += 1
+    for per_project in groups.values():
+        if len(per_project) <= keep:
+            continue
+        ordered = sorted(per_project)[: len(per_project) - keep]
+        for key in ordered:
+            client.delete_object(Bucket=bucket, Key=key)
+            deleted += 1
     return deleted
 
 

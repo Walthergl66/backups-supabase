@@ -11,6 +11,19 @@ from core import db, crypto
 
 _SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 
+# Marcador que devuelve Supabase cuando la connection string no trae la
+# contraseña real. Si se guardara literal, los backups fallarían con
+# "password" = "[YOUR-PASSWORD]".
+_PASSWORD_MARKER = "[YOUR-PASSWORD]"
+
+
+def _require_real_connection(connection: str) -> None:
+    if _PASSWORD_MARKER in connection:
+        raise ProjectError(
+            "La cadena de conexión llega con el marcador [YOUR-PASSWORD]: "
+            "falta la contraseña real del proyecto."
+        )
+
 
 def slugify(text: str) -> str:
     """Normaliza un texto a un slug ascii en minúsculas (a-z, 0-9, guiones)."""
@@ -99,6 +112,7 @@ def create_project(slug: str, nombre: str, account_id: int, connection: str, pro
         )
     if not nombre or not connection or not project_ref:
         raise ProjectError("Nombre, cadena de conexión y project_ref son obligatorios.")
+    _require_real_connection(connection)
     existing = db.fetch_one("SELECT id FROM projects WHERE slug = ?", (slug,))
     if existing is not None:
         raise ProjectError(f"Ya existe un proyecto con el slug '{slug}'.")
@@ -158,6 +172,8 @@ def update_project(
         clash = db.fetch_one("SELECT id FROM projects WHERE slug = ? AND id != ?", (new_slug, project_id))
         if clash is not None:
             raise ProjectError(f"Ya existe un proyecto con el slug '{new_slug}'.")
+    if connection and connection.strip():
+        _require_real_connection(connection.strip())
     new_connection = crypto.encrypt(connection.strip()) if connection and connection.strip() else current["connection_encrypted"]
     new_schedule = _validate_schedule(schedule) if schedule is not None else current.get("schedule")
     db.execute(

@@ -29,6 +29,26 @@ def test_blacklist_poda_expirados():
     assert bl.is_revoked("viejo") is False  # la poda lo descarta al consultar
 
 
+def test_blacklist_no_se_vacia_al_llenarse():
+    """Regresión: al alcanzar el límite se expulsa lo más próximo a expirar,
+    pero el resto de las revocadas sigue invalidado (antes se limpiaba todo)."""
+    import time
+
+    from services.access_blacklist import AccessBlacklist
+
+    bl = AccessBlacklist(max_size=5)
+    now = int(time.time())
+    for i in range(5):
+        bl.revoke(f"jti{i}", now + 100 + i)
+
+    # El sexto dispara la expulsión de la más próxima a expirar.
+    bl.revoke("jti5", now + 500)
+    assert not bl.is_revoked("jti0")          # expulsada (la que antes moría)
+    for jti in ("jti1", "jti2", "jti3", "jti4", "jti5"):
+        assert bl.is_revoked(jti) is True     # el resto sigue revocado
+    assert len(bl._entries) <= bl._max_size
+
+
 def test_jwt_lleva_jti(db):
     from core import jwt
     from services import web_users

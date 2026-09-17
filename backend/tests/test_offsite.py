@@ -61,6 +61,40 @@ def test_retencion_borra_solo_los_mas_viejos(db, monkeypatch):
     cfg._settings = None
 
 
+def test_retencion_por_proyecto_no_mezcla_slugs(db, monkeypatch):
+    """Regresión: la retención no se aplica de forma global-alfabética, que
+    podía borrar los respaldos recientes de un proyecto en favor de otro."""
+    import core.config as cfg
+    from backup import offsite
+
+    class FakeClient:
+        def __init__(self):
+            self.deleted = []
+
+        def delete_object(self, Bucket, Key):
+            self.deleted.append(Key)
+
+    monkeypatch.setenv("OFFSITE_KEEP_COUNT", "2")
+    cfg._settings = None
+    settings_obj = cfg.settings()
+    fake = FakeClient()
+    keys = [
+        "backups/proy-a/alfa_20260101.dump.enc",
+        "backups/proy-a/alfa_20260102.dump.enc",
+        "backups/proy-a/alfa_20260103.dump.enc",
+        "backups/proy-b/beta_20260101.dump.enc",
+        "backups/proy-b/beta_20260102.dump.enc",
+        "backups/proy-b/beta_20260103.dump.enc",
+    ]
+    deleted = offsite._apply_retention(fake, settings_obj, keys)
+    assert deleted == 2
+    assert fake.deleted == [
+        "backups/proy-a/alfa_20260101.dump.enc",
+        "backups/proy-b/beta_20260101.dump.enc",
+    ]
+    cfg._settings = None
+
+
 def test_report_errors_notifica_a_admins(db, monkeypatch):
     """Regresión: el fallo de la copia off-site debe avisar a los admins
     (async sin await dejaba la alerta en una corutina que nunca se ejecutaba)."""
