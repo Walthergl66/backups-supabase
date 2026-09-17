@@ -144,8 +144,18 @@ def can(user_id: int, project_id: int, permission: str) -> bool:
 
 
 def authorized_chat(telegram_chat_id: int) -> dict | None:
-    """Devuelve el usuario si está registrado y activo."""
-    return get_user(telegram_chat_id)
+    """Devuelve el usuario si está registrado y activo.
+
+    Un usuario desactivado desde la web no puede seguir operando el bot:
+    al quedar desactivado deja de estar autorizado en /register, /addbd,
+    /proyectos y en el resto de comandos.
+    """
+    return user_dict(
+        db.fetch_one(
+            "SELECT * FROM users WHERE telegram_chat_id = ? AND activo = 1",
+            (telegram_chat_id,),
+        )
+    )
 
 
 def save_pat(telegram_chat_id: int, pat: str) -> None:

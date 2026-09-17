@@ -40,16 +40,11 @@ async def _cmd_proyectos(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if user is None:
         return
 
-    projects = projects_srv.list_projects(only_active=True)
-
-    if users_srv.has_pat(chat_id):
-        account = users_srv.find_account_by_chat_id(chat_id)
-        if account:
-            projects = [p for p in projects if p["account_id"] == account["id"]]
+    projects = _visible_projects(user)
 
     if not projects:
         await notify_mod.send_message(
-            context.bot, chat_id, "No hay proyectos activos conectados todavía."
+            context.bot, chat_id, "No hay proyectos activos disponibles para ti."
         )
         return
     lines = [f"Proyectos activos ({len(projects)}):", ""]
@@ -58,3 +53,19 @@ async def _cmd_proyectos(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         lines.append(f"• {p['slug']} — último backup: {ultimo}")
     await notify_mod.send_message(context.bot, chat_id, "\n".join(lines))
     audit_srv.log_action("bot_proyectos", "ok", user_id=user["id"])
+
+
+def _visible_projects(user: dict) -> list[dict]:
+    """Proyectos activos que el usuario puede ver.
+
+    Los admins ven todos; el resto solo los que tengan permiso
+    `can_backup` o `can_monitor` (nunca el inventario completo).
+    """
+    projects = projects_srv.list_projects(only_active=True)
+    if user["rol"] == "admin":
+        return projects
+    return [
+        p for p in projects
+        if users_srv.can(user["id"], p["id"], "can_backup")
+        or users_srv.can(user["id"], p["id"], "can_monitor")
+    ]

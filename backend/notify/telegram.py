@@ -7,6 +7,7 @@ cliente en esta versión.)
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from telegram import Bot
@@ -80,6 +81,19 @@ async def notify_admins(text: str) -> None:
                                    disable_web_page_preview=True)
         except Exception as exc:  # noqa: BLE001
             logger.error("No se pudo notificar alerta al chat %s: %s", chat_id, exc)
+
+
+def notify_admins_sync(text: str) -> None:
+    """Variante síncrona de `notify_admins` para código que corre en un hilo de
+    trabajo (jobs del scheduler, sincronización off-site).
+
+    En esos hilos no hay event-loop vigente y no se puede `await`; se ejecuta
+    la corutina con `asyncio.run`. Devuelve cuando el envío terminó (o falló).
+    """
+    try:
+        asyncio.run(notify_admins(text))
+    except RuntimeError as exc:
+        logger.error("No se pudo ejecutar la alerta por Telegram desde este hilo: %s", exc)
 
 
 async def notify_admins_document(filename: str, data: bytes, caption: str = "") -> None:

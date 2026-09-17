@@ -90,7 +90,7 @@ def send_daily_summary() -> None:
     text = build_daily_summary()
     if not text:
         return
-    notify_mod.notify_admins(text)
+    notify_mod.notify_admins_sync(text)
 
 
 def _parse(value: str) -> datetime | None:

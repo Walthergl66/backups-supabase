@@ -69,3 +69,35 @@ def test_header_usa_tz_configurada(db, monkeypatch):
     text = build_daily_summary()
     assert "UTC" not in text.split("\n")[1]
     cfg._settings = None
+
+
+def test_send_daily_summary_envia_a_admins(db, monkeypatch):
+    """Regresión: el resumen diario debe llegar (async sin await dejaba el
+    envío en una corutina que nunca se ejecutaba)."""
+    import notify.daily_summary as ds
+    from notify import telegram as notify_mod
+
+    sent: list[str] = []
+
+    async def fake_notify(text):
+        sent.append(text)
+
+    monkeypatch.setattr(notify_mod, "notify_admins", fake_notify)
+    _seed_project(db, "sano", last_ok=datetime.now())
+    ds.send_daily_summary()
+    assert len(sent) == 1
+    assert "sano" in sent[0]
+
+
+def test_send_daily_summary_sin_proyectos_no_envia(db, monkeypatch):
+    import notify.daily_summary as ds
+    from notify import telegram as notify_mod
+
+    sent: list[str] = []
+
+    async def fake_notify(text):
+        sent.append(text)
+
+    monkeypatch.setattr(notify_mod, "notify_admins", fake_notify)
+    ds.send_daily_summary()
+    assert sent == []

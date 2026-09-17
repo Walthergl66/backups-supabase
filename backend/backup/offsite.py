@@ -128,7 +128,7 @@ def _report_errors(summary: dict, notify: bool) -> None:
 
     detail = "\n".join(f"- {sanitize.redact_secrets(e)}" for e in summary["errors"][:10])
     try:
-        notify_mod.notify_admins(
+        notify_mod.notify_admins_sync(
             "⚠️ Falló la copia fuera del sitio de los backups:\n" + detail
         )
     except Exception as exc:  # noqa: BLE001
