@@ -32,6 +32,7 @@ from notify import telegram as notify_mod
 from notify.daily_summary import send_daily_summary as _send_daily_summary
 from services import audit as audit_srv
 from services import backup_history as history_srv
+from services import refresh_tokens as refresh_srv
 from services import web_users as web_users_srv
 
 
@@ -101,11 +102,12 @@ def bootstrap_admin() -> None:
 
 
 def retention_purge() -> dict:
-    """Purga audit_log y backup_history por antigüedad (configurable)."""
+    """Purga audit_log, backup_history y refresh_sessions por antigüedad."""
     cfg = settings()
     removal = {
         "audit": audit_srv.purge_old(cfg.audit_retention_days),
         "history": history_srv.purge_old(cfg.history_retention_days),
+        "sessions": refresh_srv.purge_expired_sessions(),
     }
     return removal
 
@@ -113,7 +115,8 @@ def retention_purge() -> dict:
 async def retention_purge_job(log: logging.Logger) -> None:
     try:
         removal = await asyncio.to_thread(retention_purge)
-        log.info("Purga de retención: audit=%d history=%d", removal["audit"], removal["history"])
+        log.info("Purga de retención: audit=%d history=%d sessions=%d",
+                 removal["audit"], removal["history"], removal["sessions"])
     except Exception as exc:  # noqa: BLE001
         log.exception("Falló la purga de retención de logs")
 

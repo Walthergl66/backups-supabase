@@ -56,6 +56,21 @@ def test_podados_vencidos_se_descarta(db):
     assert db.fetch_one("SELECT COUNT(*) AS c FROM refresh_sessions")["c"] == 0
 
 
+def test_purga_semanal_de_sesiones_expirables(db):
+    """purge_expired_sessions borra solo las vencidas (job semanal)."""
+    store = refresh_tokens.RefreshTokenStore()
+    store.create(_make_user(db, username="activa"))
+    vencida = _make_user(db, username="vencida")
+    db.execute(
+        "INSERT INTO refresh_sessions (token_hash, user_id, username, rol, created_at, expires_at) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
+        ("deadbeef", vencida["id"], vencida["username"], "admin", time.time(), time.time() - 10),
+    )
+    assert refresh_tokens.purge_expired_sessions() == 1
+    remaining = db.fetch_one("SELECT COUNT(*) AS c FROM refresh_sessions")["c"]
+    assert remaining == 1  # solo quedó la activa
+
+
 def test_refresh_rechazado_si_usuario_desactivado(db):
     from fastapi.testclient import TestClient
     from api.app import app

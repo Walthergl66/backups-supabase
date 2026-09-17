@@ -73,4 +73,15 @@ class RefreshTokenStore:
         db.execute("DELETE FROM refresh_sessions WHERE expires_at <= ?", (time.time(),))
 
 
+def purge_expired_sessions() -> int:
+    """Purga sesiones web expiradas (job semanal de retención). Devuelve nº eliminado.
+
+    En uso normal `RefreshTokenStore` ya limpia vencidas en cada login/rotación,
+    pero tras periodos sin actividad quedan filas; la purga semanal la cubre.
+    """
+    with db.connect() as conn:
+        cur = conn.execute("DELETE FROM refresh_sessions WHERE expires_at <= ?", (time.time(),))
+        return cur.rowcount
+
+
 refresh_store = RefreshTokenStore()
