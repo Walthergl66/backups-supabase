@@ -22,6 +22,7 @@ from __future__ import annotations
 import logging
 import shutil
 import subprocess
+import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -33,6 +34,19 @@ from core.config import settings
 from services import supabase_api as api_srv
 
 logger = logging.getLogger(__name__)
+
+
+# Lock físico por proyecto: todos los caminos (bot con /backup, scheduler
+# automático) ejecutan pg_dump sobre el MISMO destino; dos ejecuciones
+# simultáneas del mismo slug compartirían nombre de archivo y truncarían
+# el .dump. Vive aquí para cubrir a cualquier llamador.
+_project_locks: dict[int, threading.Lock] = {}
+_project_locks_guard = threading.Lock()
+
+
+def _lock_for_project(project_id: int) -> threading.Lock:
+    with _project_locks_guard:
+        return _project_locks.setdefault(project_id, threading.Lock())
 
 
 @dataclass
@@ -60,7 +74,9 @@ def backup_path_for(slug: str) -> tuple[Path, Path]:
     """Devuelve (directorio del proyecto, ruta del nuevo archivo)."""
     base: Path = settings().backup_dir / slug
     base.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    # Microsegundos: incluso sin lock (o con llamadores futuros que lo
+    # omitan), dos ejecuciones en el mismo segundo no comparten archivo.
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     filename = f"{slug}_{stamp}.dump"
     return base, base / filename
 
@@ -80,11 +96,19 @@ def _disk_has_enough_space(directory: Path) -> tuple[bool, str]:
 
 
 def run_backup(project: dict) -> BackupResult:
-    """Ejecuta un pg_dump -Fc de un proyecto dado como dict de services.projects.
+    """Ejecuta un pg_dump -Fc de un proyecto, serializado por proyecto.
 
     `project` debe incluir: id, slug, connection_plain. Es una operación
-    bloqueante; llamarla desde asyncio/túnel del bot con `asyncio.to_thread`.
+    bloqueante; llamarla desde asyncio con `asyncio.to_thread`. El lock por
+    proyecto vive aquí (no solo en el bot) para que el scheduler automático
+    no lance un segundo pg_dump sobre el mismo archivo en paralelo.
     """
+    with _lock_for_project(project["id"]):
+        return _run_backup(project)
+
+
+def _run_backup(project: dict) -> BackupResult:
+    """Implementa el backup real: ya se tiene el lock por proyecto."""
     start = time.monotonic()
     slug = project["slug"]
     conn_str = project["connection_plain"]

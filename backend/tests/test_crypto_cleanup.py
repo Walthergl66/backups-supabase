@@ -100,3 +100,75 @@ def test_run_backup_usa_verify_dump_y_completa(db, tmp_path, monkeypatch):
     assert any("pg_dump" in c and "--list" not in c for c in calls)
     assert any("--list" in c for c in calls)  # se llamó a verify_dump
     cfg._settings = None
+
+
+def test_backup_paths_unicos_en_mismo_segundo(db, tmp_path, monkeypatch):
+    """El nombre lleva microsegundos: dos llamadas rápidas no comparten archivo."""
+    monkeypatch.setenv("BACKUP_DIR", str(tmp_path / "backups"))
+    import core.config as cfg
+    cfg._settings = None
+
+    from backup import runner
+
+    names = [runner.backup_path_for("nexo")[1].name for _ in range(5)]
+    assert len(names) == len(set(names))
+
+    cfg._settings = None
+
+
+def test_run_backup_serializa_por_proyecto(db, tmp_path, monkeypatch):
+    """Dos run_backup concurrentes del mismo proyecto no corren pg_dump a la vez
+    y terminan en archivos distintos (protege manual + programado simultáneos)."""
+    import subprocess
+    import threading
+    import time as _time
+    from pathlib import Path
+
+    from backup import runner
+
+    monkeypatch.setenv("BACKUP_DIR", str(tmp_path / "backups"))
+    monkeypatch.setenv("BACKUP_KEEP_COUNT", "5")
+    import core.config as cfg
+    cfg._settings = None
+
+    pg_dump_entradas: list[float] = []
+    guard = threading.Lock()
+
+    def fake_run(args, **kwargs):
+        if "--list" in args:  # verify_dump
+            return subprocess.CompletedProcess(args, 0, stdout="Item 1\n", stderr="")
+        if args[0] == "pg_restore":  # conversión a SQL
+            out = Path(args[args.index("--file") + 1])
+            out.write_bytes(b"SELECT 1;")
+            return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+        with guard:
+            pg_dump_entradas.append(_time.monotonic())
+        _time.sleep(0.2)
+        dest = Path(args[args.index("--file") + 1])
+        dest.write_bytes(b"x" * 64)
+        return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(runner.subprocess, "run", fake_run)
+    monkeypatch.setattr(runner, "_pg_dump_binary", lambda: "pg_dump")
+    monkeypatch.setattr(runner, "_pg_restore_binary", lambda: "pg_restore")
+
+    project = {"id": 1, "slug": "nexo", "connection_plain": "postgresql://x:y@h/db"}
+    results: list = []
+    out_guard = threading.Lock()
+
+    def worker():
+        r = runner.run_backup(dict(project))
+        with out_guard:
+            results.append(r)
+
+    threads = [threading.Thread(target=worker) for _ in range(2)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert len(pg_dump_entradas) == 2
+    assert abs(pg_dump_entradas[1] - pg_dump_entradas[0]) >= 0.15  # serializados
+    assert all(r.ok for r in results)
+    assert len({r.ruta_archivo for r in results}) == 2  # sin colisión de nombre
+    cfg._settings = None
