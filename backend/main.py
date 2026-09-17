@@ -263,6 +263,8 @@ async def main() -> None:
         host=cfg.web_host,
         port=cfg.web_port,
         log_level="info",
+        proxy_headers=True,
+        forwarded_allow_ips=cfg.forwarded_allow_ips,
     )
     server = uvicorn.Server(config)
 

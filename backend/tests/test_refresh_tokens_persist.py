@@ -102,3 +102,25 @@ def test_refresh_rechazado_si_usuario_eliminado(db):
         web_users.delete_web_user(uid)
 
         assert c.post("/api/auth/refresh").status_code == 401
+
+
+def test_cookie_secure_segun_esquema(db):
+    """La cookie de sesión es Secure solo cuando llega por HTTPS (tras Tailscale)."""
+    from fastapi.testclient import TestClient
+    from api.app import app
+    from services import web_users
+
+    web_users.create_web_user("user1", "LargaSegura-2026", rol="admin")
+    body = {"username": "user1", "password": "LargaSegura-2026"}
+
+    with TestClient(app, base_url="http://testserver") as c:
+        resp = c.post("/api/auth/login", json=body)
+        assert resp.status_code == 200
+        set_cookie = resp.headers.get("set-cookie", "")
+        assert "Secure" not in set_cookie
+        assert "HttpOnly" in set_cookie
+
+    with TestClient(app, base_url="https://testserver") as c:
+        resp = c.post("/api/auth/login", json=body)
+        assert resp.status_code == 200
+        assert "Secure" in resp.headers.get("set-cookie", "")
