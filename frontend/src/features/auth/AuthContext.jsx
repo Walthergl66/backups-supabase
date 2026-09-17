@@ -24,10 +24,17 @@ export function AuthProvider({ children }) {
     return data.user
   }
 
-  const logout = () => {
-    clearToken()
-    authService.logoutRemote().catch(() => {})
-    setUser(null)
+  const logout = async () => {
+    try {
+      // Primero se revoca la sesión en el servidor (con el Bearer del access
+      // token en el header), para que el JWT entre en la blacklist.
+      await authService.logoutRemote()
+    } catch {
+      // Si falla la red o el servidor, se cierra la sesión local igualmente.
+    } finally {
+      clearToken()
+      setUser(null)
+    }
   }
 
   const value = useMemo(() => ({ user, loading, login, logout }), [user, loading])
