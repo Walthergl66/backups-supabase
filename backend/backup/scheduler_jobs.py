@@ -78,14 +78,30 @@ def resync() -> None:
 
 async def run_scheduled_backup(project_id: int) -> None:
     """Job: ejecuta el backup de un proyecto y registra/avisa el resultado."""
-    project = projects_srv.get_project(project_id, include_secret=True)
+    try:
+        project = projects_srv.get_project(project_id, include_secret=True)
+    except Exception as exc:  # noqa: BLE001 - no dejar morir el job del scheduler
+        logger.exception("Job programado id=%s: no se pudo cargar el proyecto: %s", project_id, exc)
+        await _alert_scheduled_failure(
+            f"proyecto id={project_id}",
+            f"No se pudo cargar el proyecto para el backup programado: {exc}",
+        )
+        return
     if project is None or not project.get("activo"):
         logger.info("Job programado ignorado: proyecto id=%s no está activo.", project_id)
         return
 
     log = logger.getChild(project["slug"])
     log.info("Backup programado iniciando para '%s'...", project["slug"])
-    result = await asyncio.to_thread(backup_runner.run_backup, project)
+    try:
+        result = await asyncio.to_thread(backup_runner.run_backup, project)
+    except Exception as exc:  # noqa: BLE001 - run_backup ya no debería lanzar, doble red
+        msg = f"Error inesperado ejecutando el backup: {exc}"
+        log.exception("Backup programado '%s': %s", project["slug"], msg)
+        history_srv.record(project_id, "error", detalle=msg)
+        audit_srv.log_action("auto_backup", "error", project_id=project_id, detalle=msg)
+        await _alert_scheduled_failure(project["slug"], msg)
+        return
 
     if result.ok:
         history_srv.record(
@@ -103,14 +119,18 @@ async def run_scheduled_backup(project_id: int) -> None:
         audit_srv.log_action("auto_backup", "error", project_id=project_id,
                              detalle=f"programado: {result.detalle}")
         log.error("Backup programado FALLÓ para '%s': %s", project["slug"], result.detalle)
-        try:
-            await notify_mod.notify_admins(
-                "⚠️ Backup programado FALLÓ\n"
-                f"• Proyecto: {project['slug']}\n"
-                f"• Motivo: {sanitize.redact_secrets(result.detalle)}"
-            )
-        except Exception as exc:  # noqa: BLE001
-            log.error("No se pudo notificar el fallo del backup programado: %s", exc)
+        await _alert_scheduled_failure(project["slug"], result.detalle)
+
+
+async def _alert_scheduled_failure(slug: str, detail: str) -> None:
+    try:
+        await notify_mod.notify_admins(
+            "⚠️ Backup programado FALLÓ\n"
+            f"• Proyecto: {slug}\n"
+            f"• Motivo: {sanitize.redact_secrets(detail)}"
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.error("No se pudo notificar el fallo del backup programado: %s", exc)
 
 
 async def _sync_offsite() -> None:
