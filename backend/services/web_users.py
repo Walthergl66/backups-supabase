@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+import threading
+import time
 
 import pyotp
 
@@ -12,6 +13,17 @@ from services import refresh_tokens
 MAX_FAILED_ATTEMPTS = 8
 LOCKOUT_MINUTES = 15
 MIN_PASSWORD_LENGTH = 12
+
+# Fallos de login por (usuario, IP). El bloqueo es por IP de origen para que un
+# tercero no pueda dejar fuera del panel al dueño de la cuenta desde otra
+# dirección (DoS por lockout). Vive en memoria: reiniciar el proceso lo limpia,
+# lo cual es aceptable para un control anti fuerza bruta.
+_login_failures: dict[tuple[str, str], list[float]] = {}
+_login_lock = threading.Lock()
+
+
+def _failure_key(username: str, ip: str | None) -> tuple[str, str]:
+    return ((username or "").strip().lower(), (ip or "").strip())
 
 
 class WebUserError(Exception):
