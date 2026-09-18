@@ -55,6 +55,8 @@ async def update_account(account_id: int, request: Request, admin: dict = Depend
 
 @router.delete("/{account_id}")
 async def delete_account(account_id: int, admin: dict = Depends(require_admin)):
+    if accounts_srv.get_account(account_id) is None:
+        raise HTTPException(status_code=404, detail="Cuenta no encontrada.")
     try:
         accounts_srv.delete_account(account_id)
     except accounts_srv.AccountError as exc:

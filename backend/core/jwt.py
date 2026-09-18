@@ -18,6 +18,7 @@ from typing import Any
 from core.config import settings
 
 _ISSUER = "supabase-backups"
+_AUDIENCE = "supabase-backups-api"
 
 _b64 = base64.urlsafe_b64encode
 
@@ -49,6 +50,7 @@ def create_token(user: dict, ttl: int | None = None) -> str:
     now = int(time.time())
     payload = {
         "iss": _ISSUER,
+        "aud": _AUDIENCE,
         "sub": str(user["id"]),
         "username": user["username"],
         "rol": user["rol"],
@@ -64,7 +66,7 @@ class InvalidToken(Exception):
 
 
 def decode_token(token: str) -> dict:
-    """Valida firma, expiración e issuer; devuelve los claims."""
+    """Valida firma, expiración, issuer y audiencia; devuelve los claims."""
     parts = token.split(".")
     if len(parts) != 3:
         raise InvalidToken("formato inválido")
@@ -79,6 +81,8 @@ def decode_token(token: str) -> dict:
         raise InvalidToken("payload inválido") from exc
     if payload.get("iss") != _ISSUER:
         raise InvalidToken("issuer inválido")
+    if payload.get("aud") != _AUDIENCE:
+        raise InvalidToken("audiencia inválida")
     exp = payload.get("exp", 0)
     if int(time.time()) > exp:
         raise InvalidToken("token expirado")

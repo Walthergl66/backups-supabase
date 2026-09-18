@@ -60,6 +60,30 @@ def test_jwt_lleva_jti(db):
     assert isinstance(claims.get("jti"), str) and len(claims["jti"]) > 8
 
 
+def test_jwt_lleva_audiencia_y_se_valida(db):
+    import pytest
+
+    from core import jwt
+    from services import web_users
+
+    uid = web_users.create_web_user("u1", "LargaSegura-2026", rol="admin")
+    user = web_users.get_web_user_by_id(uid)
+    token = jwt.create_token({"id": user["id"], "username": user["username"], "rol": user["rol"]})
+    claims = jwt.decode_token(token)
+    assert claims.get("aud") == "supabase-backups-api"
+
+    # Mismo emisor y clave, pero sin aud: no debe validarse (una audiencia no
+    # debe aceptar tokens firmados para otra aplicación por el mismo secreto).
+    sin_aud = jwt._encode({k: v for k, v in claims.items() if k != "aud"})
+    with pytest.raises(jwt.InvalidToken):
+        jwt.decode_token(sin_aud)
+
+    # Y con una audiencia distinta: tampoco.
+    otra_aud = jwt._encode({**claims, "aud": "otra-app"})
+    with pytest.raises(jwt.InvalidToken):
+        jwt.decode_token(otra_aud)
+
+
 def test_token_revocado_queda_invalido_en_deps(db):
     from fastapi.testclient import TestClient
     from api.app import app

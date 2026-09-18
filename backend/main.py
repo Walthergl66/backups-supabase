@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import secrets
 from logging.handlers import RotatingFileHandler
 from zoneinfo import ZoneInfo
@@ -73,8 +74,8 @@ def bootstrap_admin() -> None:
 
     Las credenciales vienen de .env (WEB_ADMIN_USERNAME / WEB_ADMIN_PASSWORD).
     Si el password no está definido o no cumple la política de seguridad
-    (mínimo 12 caracteres), se genera uno aleatorio y se imprime una única
-    vez en los logs para que pueda iniciar sesión por primera vez.
+    (mínimo 12 caracteres), se genera uno aleatorio que se escribe en un
+    archivo provisional (nunca en app.log, que rota y persiste).
     """
     if web_users_srv.count_web_users() > 0:
         return
@@ -92,11 +93,29 @@ def bootstrap_admin() -> None:
     )
     log = logging.getLogger(__name__)
     if provisional:
-        log.warning(
-            "WEB_ADMIN_PASSWORD no definido o demasiado corto (mín. %d caracteres). "
-            "Se generó una provisional: %s. Inicia sesión y cámbiala cuanto antes.",
-            web_users_srv.MIN_PASSWORD_LENGTH, password,
-        )
+        # La contraseña provisional no se loguea (app.log rota y persiste la
+        # historia). Se escribe en un archivo de un solo uso junto a la BD.
+        provisional_path = cfg.db_path.parent / "provisional_admin_password.txt"
+        try:
+            provisional_path.write_text(
+                f"Usuario: {username}\nContraseña provisional: {password}\n"
+                "Inicia sesión y cámbiala cuanto antes.\n",
+                encoding="utf-8",
+            )
+            try:
+                os.chmod(provisional_path, 0o600)
+            except OSError:  # noqa: BLE001 - Windows no soporta chmod: no bloquea
+                pass
+        except OSError as exc:  # noqa: BLE001
+            log.error("No se pudo escribir la contraseña provisional en %s: %s",
+                      provisional_path, exc)
+            provisional_path = None
+        if provisional_path is not None:
+            log.warning(
+                "WEB_ADMIN_PASSWORD no definido o demasiado corto (mín. %d caracteres): "
+                "se generó una provisional. Inicia sesión con la contraseña de %s.",
+                web_users_srv.MIN_PASSWORD_LENGTH, provisional_path,
+            )
     else:
         log.info("Usuario admin inicial creado con WEB_ADMIN_PASSWORD del .env.")
 

@@ -175,7 +175,7 @@ def update_project(
     if connection and connection.strip():
         _require_real_connection(connection.strip())
     new_connection = crypto.encrypt(connection.strip()) if connection and connection.strip() else current["connection_encrypted"]
-    new_schedule = _validate_schedule(schedule) if schedule is not None else current.get("schedule")
+    new_schedule = _validate_schedule(schedule) if schedule is not None else current["schedule"]
     db.execute(
         """
         UPDATE projects

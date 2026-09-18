@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from api.deps import get_current_user, require_admin
+from api.parse import as_bool
 from backup import scheduler_jobs
 from services import accounts as accounts_srv
 from services import audit as audit_srv
@@ -79,7 +80,7 @@ async def update_project(project_id: int, request: Request, admin: dict = Depend
             account_id=int(data.get("account_id")) if data.get("account_id") else None,
             connection=data.get("connection") or None,
             project_ref=data.get("project_ref") or None,
-            activo=bool(data.get("activo", True)),
+            activo=as_bool(data.get("activo"), True),
             schedule=data.get("schedule"),
         )
     except projects_srv.ProjectError as exc:
@@ -92,6 +93,8 @@ async def update_project(project_id: int, request: Request, admin: dict = Depend
 
 @router.delete("/{project_id}")
 async def delete_project(project_id: int, admin: dict = Depends(require_admin)):
+    if projects_srv.get_project(project_id) is None:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado.")
     try:
         projects_srv.delete_project(project_id)
     except projects_srv.ProjectError as exc:
