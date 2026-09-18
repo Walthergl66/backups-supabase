@@ -114,3 +114,17 @@ def test_report_errors_notifica_a_admins(db, monkeypatch):
 
     offsite._report_errors(summary, notify=False)
     assert len(sent) == 1
+
+
+def test_prefix_vacio_no_desactiva_la_retencion(db, monkeypatch):
+    """C5: aunque OFFSET_PREFIX llegue vacío, la retención sigue lista objetos."""
+    import core.config as cfg
+    from backup import offsite
+
+    monkeypatch.setenv("OFFSITE_PREFIX", "")
+    cfg._settings = None
+    try:
+        assert cfg.settings().offsite_prefix == "backups"
+        assert offsite._prefix() == "backups"
+    finally:
+        cfg._settings = None

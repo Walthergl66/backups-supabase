@@ -124,3 +124,30 @@ def test_throttle_poda_bloqueos_expirados(db):
     finally:
         throttle._blocked_until = old_blocked
         throttle._hits = old_hits
+
+
+def test_backups_api_no_expone_ruta_absoluta(db):
+    """Regresión B2: el historial no filtra rutas absolutas del servidor."""
+    from fastapi.testclient import TestClient
+
+    from api.app import app
+    from core import db as db_mod
+    from services import accounts as accounts_srv
+    from services import projects as projects_srv
+
+    acc = accounts_srv.create_account("A", "pat-x")
+    pid = projects_srv.create_project(
+        "p1", "P1", acc, "postgresql://u:p@h/db", "ref1"
+    )
+    db_mod.execute(
+        "INSERT INTO backup_history (project_id, resultado, ruta_archivo) "
+        "VALUES (?, ?, ?)",
+        (pid, "ok", "/app/data/backups/p1/p1_20260101_010101.dump.enc"),
+    )
+    with TestClient(app) as c:
+        admin = _admin_client(c)
+        r = c.get("/api/backups", headers=admin)
+        assert r.status_code == 200
+        row = r.json()["rows"][0]
+        assert row["ruta_archivo"] == "p1_20260101_010101.dump.enc"
+        assert not row["ruta_archivo"].startswith("/")

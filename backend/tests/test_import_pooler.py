@@ -179,3 +179,85 @@ def test_update_project_rechaza_placeholder(db):
         projects_srv.update_project(
             pid, connection="postgresql://postgres.aaa:[YOUR-PASSWORD]@h/pg"
         )
+
+
+# --- C8: parámetros libpq en la connection string ---
+
+def test_connection_rechaza_params_libpq_peligrosos(db):
+    """C8: `options=` (y otros) pueden alterar la ejecución; se rechazan."""
+    from services import projects as projects_srv
+
+    acc = db.execute("INSERT INTO accounts (nombre, pat_encrypted) VALUES ('A','x')")
+    with pytest.raises(projects_srv.ProjectError, match=r"options"):
+        projects_srv.create_project(
+            "p1", "P1", acc,
+            "postgresql://u:p@h:5432/db?options=-csearch_path%3dtools",
+            "ref1",
+        )
+    with pytest.raises(projects_srv.ProjectError, match=r"host"):
+        projects_srv.create_project(
+            "p2", "P2", acc,
+            "postgresql://u:p@h:5432/db?host=otro-servidor.com",
+            "ref2",
+        )
+
+
+def test_connection_permite_params_libpq_seguros(db):
+    """sslmode y connect_timeout son inofensivos y habituales: se admiten."""
+    from services import projects as projects_srv
+
+    acc = db.execute("INSERT INTO accounts (nombre, pat_encrypted) VALUES ('A','x')")
+    pid = projects_srv.create_project(
+        "p3", "P3", acc,
+        "postgresql://u:p@h:5432/db?sslmode=require&connect_timeout=10",
+        "ref3",
+    )
+    assert pid > 0
+
+
+def test_connection_requiere_esquema_y_host(db):
+    from services import projects as projects_srv
+
+    acc = db.execute("INSERT INTO accounts (nombre, pat_encrypted) VALUES ('A','x')")
+    with pytest.raises(projects_srv.ProjectError, match=r"postgresql://"):
+        projects_srv.create_project("p4", "P4", acc, "mysql://u:p@h/db", "ref4")
+    with pytest.raises(projects_srv.ProjectError, match=r"postgresql://"):
+        projects_srv.create_project("p5", "P5", acc, "not-a-url", "ref5")
+    with pytest.raises(projects_srv.ProjectError, match=r"host"):
+        projects_srv.create_project("p6", "P6", acc, "postgresql://", "ref6")
+
+
+# --- C3: longitud máxima de slug ---
+
+def test_create_project_rechaza_slug_muy_largo(db):
+    from services import projects as projects_srv
+
+    acc = db.execute("INSERT INTO accounts (nombre, pat_encrypted) VALUES ('A','x')")
+    largo = "a" * 80
+    assert len(largo) > projects_srv.MAX_SLUG_LENGTH
+    with pytest.raises(projects_srv.ProjectError, match=r"superar"):
+        projects_srv.create_project(
+            largo, "Largo", acc, "postgresql://u:p@h/db", "ref1"
+        )
+
+
+def test_update_project_rechaza_slug_muy_largo(db):
+    from services import projects as projects_srv
+
+    acc = db.execute("INSERT INTO accounts (nombre, pat_encrypted) VALUES ('A','x')")
+    pid = projects_srv.create_project(
+        "ok1", "Ok", acc, "postgresql://u:p@h/db", "ref1"
+    )
+    with pytest.raises(projects_srv.ProjectError, match=r"superar"):
+        projects_srv.update_project(pid, slug="b" * 70)
+
+
+def test_create_project_acepta_slug_64_caracteres(db):
+    from services import projects as projects_srv
+
+    acc = db.execute("INSERT INTO accounts (nombre, pat_encrypted) VALUES ('A','x')")
+    ok_slug = "a" * projects_srv.MAX_SLUG_LENGTH
+    pid = projects_srv.create_project(
+        ok_slug, "Ok", acc, "postgresql://u:p@h/db", "ref1"
+    )
+    assert pid > 0
