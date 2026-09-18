@@ -99,6 +99,22 @@ def test_login_necesita_code_cuando_totp_activo(client, db):
     assert "access_token" in r.json()
 
 
+def test_activar_2fa_revoca_sesiones_previas(client, db):
+    """Regresión: activar el 2FA invalida las sesiones anteriores (una cookie
+    de refresh robada antes del 2FA no debe seguir renovando)."""
+    c, user_id = client
+    assert _login(c).status_code == 200
+    assert c.post("/api/auth/refresh").status_code == 200
+
+    tok = _login(c).json()["access_token"]
+    c.post("/api/auth/totp/setup", headers={"Authorization": f"Bearer {tok}"})
+    code = pyotp.TOTP(_secret_for(user_id)).now()
+    c.post("/api/auth/totp/confirm", json={"code": code},
+           headers={"Authorization": f"Bearer {tok}"})
+
+    assert c.post("/api/auth/refresh").status_code == 401
+
+
 def test_disable_totp_requiere_code_valido(client, db):
     c, user_id = client
     tok = _login(c).json()["access_token"]

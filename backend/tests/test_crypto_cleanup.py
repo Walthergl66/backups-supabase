@@ -144,6 +144,44 @@ def test_run_backup_borra_claro_si_falla_el_cifrado(db, tmp_path, monkeypatch):
     cfg._settings = None
 
 
+def test_run_backup_no_propaga_excepciones(db, tmp_path, monkeypatch):
+    """Regresión: un error inesperado no debe escapar y matar al scheduler/bot."""
+    from backup import runner
+
+    def boom(_project):
+        raise RuntimeError("boom interno")
+
+    monkeypatch.setattr(runner, "_run_backup", boom)
+    result = runner.run_backup(
+        {"id": 1, "slug": "nexo", "connection_plain": "postgresql://x:y@h/db"}
+    )
+    assert result.ok is False
+    assert "boom interno" in result.detalle
+
+
+def test_scheduler_avisa_si_falla_la_carga(db, monkeypatch):
+    """Regresión: si el proyecto no se puede cargar (p. ej. clave de cifrado
+    cambiada), el job avisa a los admins en vez de morir en silencio."""
+    import asyncio
+
+    from backup import scheduler_jobs
+    from services import projects as projects_srv
+
+    sent: list[str] = []
+
+    async def fake_notify(text):
+        sent.append(text)
+
+    monkeypatch.setattr(scheduler_jobs.notify_mod, "notify_admins", fake_notify)
+
+    def boom(*_args, **_kwargs):
+        raise ValueError("ENCRYPTION_KEY cambió")
+
+    monkeypatch.setattr(projects_srv, "get_project", boom)
+    asyncio.run(scheduler_jobs.run_scheduled_backup(1))
+    assert sent and "proyecto id=1" in sent[0]
+
+
 def test_backup_paths_unicos_en_mismo_segundo(db, tmp_path, monkeypatch):
     """El nombre lleva microsegundos: dos llamadas rápidas no comparten archivo."""
     monkeypatch.setenv("BACKUP_DIR", str(tmp_path / "backups"))

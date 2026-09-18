@@ -61,3 +61,14 @@ def test_visible_projects_usuario_ve_solo_sus_permisos(db):
     luis = users_srv.get_user_by_id(user_id)
     slugs = {p["slug"] for p in _visible_projects(luis)}
     assert slugs == {"alfa"}
+
+
+def test_save_pat_actualiza_cuenta_vinculada(db):
+    """Regresión: rotar el PAT con /register debe actualizar también la cuenta
+    del bot, que si no conserva el PAT antiguo (revocado) para /status."""
+    from services import accounts as accounts_srv
+
+    users_srv.create_user(555, "Ana", "usuario")
+    acc = accounts_srv.create_account("Telegram: 555", "pat-viejo")
+    users_srv.save_pat(555, "pat-nuevo")
+    assert accounts_srv.get_plaintext_pat(acc) == "pat-nuevo"
