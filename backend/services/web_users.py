@@ -95,52 +95,56 @@ def authenticate(username: str, password: str) -> dict | None:
     return _dict(row)
 
 
-def get_lock_seconds(username: str) -> int:
-    """Segundos restantes de bloqueo de una cuenta (0 si no está bloqueada)."""
-    row = db.fetch_one(
-        "SELECT locked_until FROM web_users WHERE username = ?", (username.strip(),)
-    )
-    if row is None or not row["locked_until"]:
-        return 0
-    try:
-        end = datetime.fromisoformat(row["locked_until"])
-    except ValueError:
-        return 0
-    return max(0, int((end - datetime.now()).total_seconds()))
+def get_lock_seconds(username: str, ip: str | None = None) -> int:
+    """Segundos restantes de bloqueo para (usuario, IP) (0 si no está bloqueado).
 
-
-def record_failed_login(username: str) -> tuple[int, bool]:
-    """Registra un intento fallido y bloquea si se llega al máximo.
-
-    Devuelve (intentos_acumulados, se_bloqueó_ahora).
-    No hace nada si el username no existe (evita enumerar cuentas).
+    Solo se bloquea la combinación usuario + IP de origen: un atacante no puede
+    dejar fuera al dueño de la cuenta desde otra dirección.
     """
-    username = username.strip()
-    row = db.fetch_one("SELECT id FROM web_users WHERE username = ?", (username,))
-    if row is None:
-        return 0, False
-    db.execute(
-        "UPDATE web_users SET failed_attempts = failed_attempts + 1 WHERE username = ?",
-        (username,),
-    )
-    attempts = db.fetch_one(
-        "SELECT failed_attempts AS c FROM web_users WHERE username = ?", (username,)
-    )["c"]
-    if attempts >= MAX_FAILED_ATTEMPTS:
-        db.execute(
-            "UPDATE web_users SET locked_until = ?, failed_attempts = 0 WHERE username = ?",
-            ((datetime.now() + timedelta(minutes=LOCKOUT_MINUTES)).isoformat(), username),
-        )
-        return attempts, True
-    return attempts, False
+    key = _failure_key(username, ip)
+    window = LOCKOUT_MINUTES * 60
+    now = time.time()
+    with _login_lock:
+        stamps = [t for t in _login_failures.get(key, []) if now - t < window]
+        if len(stamps) < MAX_FAILED_ATTEMPTS:
+            _login_failures.pop(key, None)
+            return 0
+        _login_failures[key] = stamps
+        return max(0, int((max(stamps) + window) - now))
 
 
-def reset_failed_logins(username: str) -> None:
-    """Limpia los contadores tras un login correcto o una edición del admin."""
-    db.execute(
-        "UPDATE web_users SET failed_attempts = 0, locked_until = NULL WHERE username = ?",
-        (username.strip(),),
-    )
+def record_failed_login(username: str, ip: str | None = None) -> tuple[int, bool]:
+    """Registra un intento fallido para (usuario, IP).
+
+    Devuelve (intentos_en_ventana, se_bloqueó_ahora). No distingue si el
+    usuario existe: el llamador responde igual en todos los casos.
+    """
+    key = _failure_key(username, ip)
+    window = LOCKOUT_MINUTES * 60
+    now = time.time()
+    with _login_lock:
+        _prune_failures_locked(now, window)
+        stamps = [t for t in _login_failures.get(key, []) if now - t < window]
+        stamps.append(now)
+        _login_failures[key] = stamps
+        attempts = len(stamps)
+        return attempts, attempts == MAX_FAILED_ATTEMPTS
+
+
+def reset_failed_logins(username: str, ip: str | None = None) -> None:
+    with _login_lock:
+        _login_failures.pop(_failure_key(username, ip), None)
+
+
+def _prune_failures_locked(now: float, window: float) -> None:
+    if len(_login_failures) <= 5000:
+        return
+    for key in list(_login_failures):
+        stamps = [t for t in _login_failures[key] if now - t < window]
+        if stamps:
+            _login_failures[key] = stamps
+        else:
+            del _login_failures[key]
 
 
 def update_web_user(

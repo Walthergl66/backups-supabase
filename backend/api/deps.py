@@ -51,12 +51,10 @@ def get_current_user(authorization: str | None = Header(default=None)) -> dict:
             detail="Sesión no válida: el usuario fue eliminado o desactivado.",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    if web_users_srv.get_lock_seconds(user["username"]) > 0:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Cuenta bloqueada temporalmente por intentos fallidos.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    # Nota: el bloqueo por intentos fallidos es por (usuario, IP) y solo aplica
+    # al login. No se comprueba aquí para que un tercero no pueda tumbar una
+    # sesión ya autenticada provocando fallos de login (DoS).
+
     # Rol y nombre SIEMPRE vienen de la BD (los cambios aplican al instante).
     return {
         "id": user["id"],

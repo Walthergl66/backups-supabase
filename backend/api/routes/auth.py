@@ -8,8 +8,6 @@ Protección anti fuerza bruta (en capas):
 
 from __future__ import annotations
 
-from math import ceil
-
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
@@ -61,26 +59,26 @@ async def login(request: Request):
     data = await request.json()
     username = (data.get("username") or "").strip()
     password = data.get("password") or ""
+    ip = request.client.host if request.client else ""
     if not username or not password:
         return JSONResponse(
             {"detail": "Usuario y contraseña son obligatorios."}, status_code=400
         )
 
-    locked_for = web_users_srv.get_lock_seconds(username)
+    locked_for = web_users_srv.get_lock_seconds(username, ip)
     if locked_for > 0:
         audit_srv.log_action(
             "web_login", "error", web_user_id=None,
-            detalle=f"bloqueado temporalmente el usuario '{username}'",
+            detalle=f"intento sobre cuenta bloqueada'{username}'",
         )
+        # Respuesta uniforme: no revela si la cuenta existe ni si está bloqueada.
         return JSONResponse(
-            {"detail": f"Cuenta bloqueada temporalmente. Intenta de nuevo en "
-                       f"{ceil(locked_for / 60)} min."},
-            status_code=423,
+            {"detail": "Usuario o contraseña incorrectos."}, status_code=401
         )
 
     user = web_users_srv.authenticate(username, password)
     if user is None:
-        attempts, locked_now = web_users_srv.record_failed_login(username)
+        attempts, locked_now = web_users_srv.record_failed_login(username, ip)
         audit_srv.log_action(
             "web_login", "error", web_user_id=None,
             detalle=f"intento con usuario '{username}' (fallo #{attempts})",
@@ -99,7 +97,7 @@ async def login(request: Request):
     # 2FA: si la cuenta tiene TOTP activo, el primer paso solo valida la contraseña.
     code = (data.get("code") or "").strip()
     if user.get("totp_enabled") and not web_users_srv.verify_totp_code(user["id"], code):
-        attempts, locked_now = web_users_srv.record_failed_login(username)
+        attempts, locked_now = web_users_srv.record_failed_login(username, ip)
         audit_srv.log_action(
             "web_login_2fa", "error", web_user_id=user["id"],
             detalle=f"código 2FA inválido (fallo #{attempts})",
@@ -117,7 +115,7 @@ async def login(request: Request):
             status_code=401,
         )
 
-    web_users_srv.reset_failed_logins(username)
+    web_users_srv.reset_failed_logins(username, ip)
     token = create_token(user)
     response = JSONResponse(
         {
