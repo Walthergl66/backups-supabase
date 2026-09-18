@@ -115,10 +115,35 @@ async def _cmd_backup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     await notify_mod.send_message(
         context.bot, chat_id, f"Iniciando backup de '{project['slug']}'…"
     )
-    full_project = projects_srv.get_project(project["id"], include_secret=True)
+    try:
+        full_project = projects_srv.get_project(project["id"], include_secret=True)
+    except Exception as exc:  # noqa: BLE001 - no dejar al usuario sin respuesta
+        audit_srv.log_action("bot_backup", "error", user_id=user["id"],
+                             project_id=project["id"], detalle=f"no se pudo cargar: {exc}")
+        await notify_mod.send_message(
+            context.bot, chat_id,
+            "No se pudo preparar el backup del proyecto (revisa su configuración)."
+        )
+        return
     lock = _project_locks.setdefault(project["id"], asyncio.Lock())
     async with lock:
-        result = await asyncio.to_thread(backup_runner.run_backup, full_project)
+        try:
+            result = await asyncio.to_thread(backup_runner.run_backup, full_project)
+        except Exception as exc:  # noqa: BLE001 - run_backup ya no debería lanzar
+            audit_srv.log_action("bot_backup", "error", user_id=user["id"],
+                                 project_id=project["id"], detalle=f"error inesperado: {exc}")
+            await notify_mod.send_message(
+                context.bot, chat_id,
+                "El backup falló de forma inesperada. Se avisó a los administradores."
+            )
+            try:
+                await notify_mod.notify_admins(
+                    f"⚠️ Backup manual FALLÓ\n• Proyecto: {project['slug']}\n"
+                    f"• Motivo: {exc}"
+                )
+            except Exception:  # noqa: BLE001
+                pass
+            return
 
     if result.ok:
         size_sql = result.tamaño_sql or 0.0

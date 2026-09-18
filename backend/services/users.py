@@ -159,10 +159,20 @@ def authorized_chat(telegram_chat_id: int) -> dict | None:
 
 
 def save_pat(telegram_chat_id: int, pat: str) -> None:
-    """Guarda el PAT de Supabase del usuario (cifrado)."""
+    """Guarda el PAT de Supabase del usuario (cifrado).
+
+    Además actualiza la cuenta vinculada del bot ('Telegram: <chat_id>'): al
+    rotar el PAT, esa cuenta conservaba el antiguo y /status seguía usando un
+    token revocado contra la Management API.
+    """
+    encrypted = crypto.encrypt(pat.strip())
     db.execute(
         "UPDATE users SET supabase_pat_encrypted = ? WHERE telegram_chat_id = ?",
-        (crypto.encrypt(pat.strip()), telegram_chat_id),
+        (encrypted, telegram_chat_id),
+    )
+    db.execute(
+        "UPDATE accounts SET pat_encrypted = ? WHERE nombre = ?",
+        (encrypted, f"Telegram: {telegram_chat_id}"),
     )
 
 
