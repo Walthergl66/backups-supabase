@@ -62,6 +62,9 @@ async def get_project(project_id: int, user: dict = Depends(get_current_user)):
     project = projects_srv.get_project(project_id)
     if project is None:
         raise HTTPException(status_code=404, detail="Proyecto no encontrado.")
+    # Los proyectos desactivados solo los ve un admin (coherente con el listado).
+    if not project["activo"] and user.get("rol") != "admin":
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado.")
     return project
 
 
@@ -120,6 +123,8 @@ async def restore_project(project_id: int, request: Request, admin: dict = Depen
 async def project_history(project_id: int, user: dict = Depends(get_current_user)):
     project = projects_srv.get_project(project_id)
     if project is None:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado.")
+    if not project["activo"] and user.get("rol") != "admin":
         raise HTTPException(status_code=404, detail="Proyecto no encontrado.")
     stats = projects_srv.project_extra_status(project_id)
     return {

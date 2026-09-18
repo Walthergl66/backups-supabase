@@ -253,6 +253,9 @@ def confirm_totp(user_id: int, code: str) -> None:
         "WHERE id = ?",
         (user["totp_pending_secret"], user_id),
     )
+    # Al activar el 2FA se revocan las sesiones abiertas antes de tenerlo:
+    # una cookie de refresh robada deja de servir sin pasar el segundo factor.
+    refresh_tokens.refresh_store.revoke_user_sessions(user_id)
 
 
 def disable_totp(user_id: int, code: str) -> None:

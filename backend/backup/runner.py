@@ -104,7 +104,15 @@ def run_backup(project: dict) -> BackupResult:
     no lance un segundo pg_dump sobre el mismo archivo en paralelo.
     """
     with _lock_for_project(project["id"]):
-        return _run_backup(project)
+        try:
+            return _run_backup(project)
+        except Exception as exc:  # noqa: BLE001 - nunca propagar y matar al llamador
+            slug = project.get("slug", "?")
+            logger.exception("Backup '%s' falló de forma inesperada: %s", slug, exc)
+            return BackupResult(
+                ok=False,
+                detalle=f"Error inesperado ejecutando el backup: {exc}",
+            )
 
 
 def _run_backup(project: dict) -> BackupResult:
