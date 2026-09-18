@@ -66,9 +66,12 @@ async def _register_pat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
     ok, msg = await asyncio.to_thread(api_srv.validate_pat, pat)
     if not ok:
+        # No se reenvía `msg` tal cual: aunque validate_pat ya lo filtra, aquí
+        # tampoco interesa dar pistas de infraestructura. Los detalles van al log.
+        logger.warning("register: PAT inválido para chat %s: %s", chat_id, msg)
         await notify_mod.send_message(
             context.bot, chat_id,
-            f"El PAT no es válido: {msg}\n\n"
+            "El PAT no es válido o Supabase no respondió. "
             "Verifica que lo hayas copiado correctamente e intenta de nuevo con /register."
         )
         return ConversationHandler.END

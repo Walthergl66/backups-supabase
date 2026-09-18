@@ -35,6 +35,12 @@ def _client():
     )
 
 
+def _prefix() -> str:
+    # Config lo normaliza a "backups", pero por defensa nunca operamos con
+    # prefijo vacío: con prefijo vacío la retención no listaría nada (C5).
+    return (settings().offsite_prefix.strip() or "backups").strip("/")
+
+
 def _rel_key(prefix: str, file: Path, base: Path) -> str:
     rel = file.relative_to(base).as_posix()
     if not prefix:
@@ -45,11 +51,10 @@ def _rel_key(prefix: str, file: Path, base: Path) -> str:
 def list_remote_keys() -> list[str]:
     """Todos los objetos del bucket bajo el prefijo configurado."""
     cfg = settings()
-    if not cfg.offsite_prefix:
-        return []
+    prefix = _prefix()
     keys: list[str] = []
     paginator = _client().get_paginator("list_objects_v2")
-    for page in paginator.paginate(Bucket=cfg.offsite_bucket, Prefix=cfg.offsite_prefix):
+    for page in paginator.paginate(Bucket=cfg.offsite_bucket, Prefix=prefix):
         for obj in page.get("Contents", []):
             keys.append(obj["Key"])
     return keys
@@ -77,10 +82,10 @@ def sync_new_backups(notify: bool = True) -> dict:
 
     new_files = [
         p for p in sorted(base.rglob("*.enc"))
-        if p.is_file() and _rel_key(cfg.offsite_prefix, p, base) not in remote
+        if p.is_file() and _rel_key(_prefix(), p, base) not in remote
     ]
     for file in new_files:
-        key = _rel_key(cfg.offsite_prefix, file, base)
+        key = _rel_key(_prefix(), file, base)
         try:
             client.upload_file(str(file), cfg.offsite_bucket, key)
             summary["uploaded"] += 1

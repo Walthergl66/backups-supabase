@@ -53,18 +53,20 @@ def _request_error_message(exc: httpx.HTTPError) -> str:
 def validate_pat(pat: str) -> tuple[bool, str]:
     """Valida un PAT haciendo GET /v1/projects.
 
-    Devuelve (es_valido, mensaje).
+    Devuelve (es_valido, mensaje). El mensaje es siempre genérico: no incluye
+    detalles de red/TLS/host (se filtra cualquier exc) para no revelar
+    infraestructura al usuario del bot.
     """
     headers = {"Authorization": f"Bearer {pat}", "Accept": "application/json"}
     try:
         resp = httpx.get(f"{SUPABASE_API}/v1/projects", headers=headers, timeout=15)
     except httpx.HTTPError as exc:
-        return False, sanitize.redact_secrets(f"No se pudo contactar la Management API: {exc}")
+        logger.warning("validate_pat: error de red: %s",
+                       sanitize.redact_secrets(str(exc)))
+        return False, _request_error_message(exc)
     if resp.status_code == 200:
-        return True, "PAT válido."
-    if resp.status_code in (401, 403):
-        return False, "El PAT no es válido o no tiene permisos."
-    return False, f"La Management API respondió HTTP {resp.status_code}."
+        return True, "El PAT es válido."
+    return False, _http_error_message(resp)
 
 
 def list_projects(pat: str) -> list[dict]:
