@@ -37,7 +37,22 @@ export default function Dashboard() {
   if (error) return (
     <PageHead title="Dashboard" sub="Todo tu sistema de respaldos en un vistazo." />
   )
-  if (!data) return <div className="muted">Cargando…</div>
+  if (!data) return (
+    <>
+      <PageHead title="Dashboard" sub="Todo tu sistema de respaldos en un vistazo." />
+      <div className="grid grid-stat" aria-hidden>
+        {tiles.map(([key, label]) => (
+          <div className="card stat" key={key}>
+            <div className="stat-ico"><span className="skel-bar" style={{ width: 26, height: 26, borderRadius: 8 }} /></div>
+            <div style={{ flex: 1 }}>
+              <div className="stat-lbl">{label}</div>
+              <div className="skel-bar" style={{ width: '70%', height: 34, marginTop: 6 }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  )
 
   const d = data.dashboard
 
