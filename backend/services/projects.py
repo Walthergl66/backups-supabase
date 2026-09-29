@@ -125,12 +125,21 @@ def _base_select(last_backup_join: bool = True) -> str:
     )
 
 
-def create_project(slug: str, nombre: str, account_id: int, connection: str, project_ref: str,
+def is_supabase_project(project: dict) -> bool:
+    """True si el proyecto tiene ref de Supabase (usa Management API).
+
+    Una ref vacía significa BD PostgreSQL genérica: backup, psql y scheduler
+    funcionan igual, pero no hay Management API (import, estado Supabase).
+    """
+    return bool((project.get("project_ref") or "").strip())
+
+
+def create_project(slug: str, nombre: str, account_id: int, connection: str, project_ref: str | None = None,
                    schedule: str | None = None) -> int:
     slug = slug.strip()
     nombre = (nombre or "").strip()
     connection = connection.strip()
-    project_ref = project_ref.strip()
+    project_ref = (project_ref or "").strip()
     schedule = _validate_schedule(schedule)
     if not slug:
         slug = slugify(nombre)
@@ -141,8 +150,9 @@ def create_project(slug: str, nombre: str, account_id: int, connection: str, pro
         )
     if len(slug) > MAX_SLUG_LENGTH:
         raise ProjectError(f"El slug no puede superar los {MAX_SLUG_LENGTH} caracteres.")
-    if not nombre or not connection or not project_ref:
-        raise ProjectError("Nombre, cadena de conexión y project_ref son obligatorios.")
+    if not nombre or not connection:
+        raise ProjectError("Nombre y cadena de conexión son obligatorios.")
+    # project_ref vacío = BD PostgreSQL genérica (sin Management API de Supabase).
     _require_real_connection(connection)
     existing = db.fetch_one("SELECT id FROM projects WHERE slug = ?", (slug,))
     if existing is not None:
@@ -209,6 +219,8 @@ def update_project(
         _require_real_connection(connection.strip())
     new_connection = crypto.encrypt(connection.strip()) if connection and connection.strip() else current["connection_encrypted"]
     new_schedule = _validate_schedule(schedule) if schedule is not None else current["schedule"]
+    # project_ref None = sin cambio; "" = convertir a PostgreSQL genérica.
+    new_ref = current["project_ref"] if project_ref is None else project_ref.strip()
     db.execute(
         """
         UPDATE projects
@@ -221,7 +233,7 @@ def update_project(
             (nombre or "").strip() or current["nombre"],
             account_id or current["account_id"],
             new_connection,
-            (project_ref or "").strip() or current["project_ref"],
+            new_ref,
             1 if activo is None else int(activo),
             new_schedule,
             project_id,
