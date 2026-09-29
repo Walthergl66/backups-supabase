@@ -423,6 +423,11 @@ table.t tr.empty td { text-align: center; color: var(--muted); padding: 40px 20p
   box-shadow: 0 22px 48px -18px rgba(2, 6, 23, 0.95);
   backdrop-filter: blur(14px);
   animation: toast-in 0.2s var(--ease-out);
+  transition: opacity 0.16s var(--ease-out), transform 0.16s var(--ease-out);
+}
+.toast-out {
+  opacity: 0;
+  transform: translateY(-10px) scale(0.98);
 }
 .toast-ok { background: rgba(5, 30, 20, 0.94); border-color: rgba(52, 211, 153, 0.45); color: #6ee7b7; }
 .toast-err { background: rgba(40, 12, 18, 0.94); border-color: rgba(251, 113, 133, 0.45); color: #fda4af; }
@@ -546,5 +551,6 @@ table.t tr.empty td { text-align: center; color: var(--muted); padding: 40px 20p
   body::before, body::after { animation: none; }
   .topbar-dot, .status-dot { animation: none; }
   .toast, .diag-card, .grid-stat > * { animation: none; }
+  .toast-out { transform: none; }
   .btn, .nav-link, table.t tbody tr { transition-duration: 0.01ms; }
 }
