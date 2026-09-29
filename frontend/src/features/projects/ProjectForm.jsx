@@ -83,7 +83,7 @@ export default function ProjectForm() {
 
   return (
     <>
-      <PageHead title={editing ? 'Editar proyecto' : 'Nuevo proyecto'} sub="Conecta un proyecto de Supabase y programa su respaldo automático." />
+      <PageHead title={editing ? 'Editar proyecto' : 'Nuevo proyecto'} sub="Conecta una base PostgreSQL (Supabase o genérica) y programa su respaldo automático." />
 
       <div className="card">
         <div className="card-body">
@@ -99,25 +99,26 @@ export default function ProjectForm() {
                 <input id="proj-nombre" className="input" value={form.nombre} onChange={set('nombre')} required />
               </div>
               <div className="field">
-                <label className="label" htmlFor="proj-account">Cuenta de Supabase</label>
+                <label className="label" htmlFor="proj-account">Cuenta</label>
                 <select id="proj-account" className="select" value={form.account_id} onChange={set('account_id')} required>
                   <option value="" disabled>Selecciona una cuenta…</option>
                   {accounts.map((a) => (
                     <option key={a.id} value={a.id}>{a.nombre}</option>
                   ))}
                 </select>
+                <div className="hint">Las cuentas agrupan proyectos. Para PostgreSQL genérica sirve cualquier cuenta (su PAT no se usa).</div>
               </div>
               <div className="field">
-                <label className="label" htmlFor="proj-ref">Referencia del proyecto (ref)</label>
-                <input id="proj-ref" className="input mono" value={form.project_ref} onChange={set('project_ref')} placeholder="xxxxxxxxxxxxxxxxxxxx" required />
-                <div className="hint">Código del proyecto. Aparece en la URL de tu dashboard de Supabase.</div>
+                <label className="label" htmlFor="proj-ref">Referencia del proyecto (ref, solo Supabase)</label>
+                <input id="proj-ref" className="input mono" value={form.project_ref} onChange={set('project_ref')} placeholder="Vacío = PostgreSQL genérica" />
+                <div className="hint">Código del proyecto en tu dashboard de Supabase. Déjalo vacío para una base PostgreSQL genérica (sin Management API).</div>
               </div>
             </div>
 
             <div className="field">
               <label className="label" htmlFor="proj-connection">Conexión de la base de datos</label>
               <input id="proj-connection" className="input mono" type="text" value={form.connection} onChange={set('connection')}
-                placeholder="postgresql://postgres:[PASSWORD]@db.xxxx.supabase.co:5432/postgres" required={!editing} />
+                placeholder="postgresql://usuario:clave@host:5432/base" required={!editing} />
               <div className="hint">
                 {editing ? 'Si la dejas vacía se conserva la actual (guardada cifrada).' : 'Se guarda cifrada al almacenarla.'}
               </div>
