@@ -31,7 +31,7 @@ CREATE TABLE projects (
     nombre        TEXT NOT NULL,
     account_id    INTEGER NOT NULL REFERENCES accounts(id),
     connection_encrypted TEXT NOT NULL,            -- cadena de conexión a PostgreSQL (pooler), cifrada
-    project_ref   TEXT NOT NULL,                   -- referencia para la Management API
+    project_ref   TEXT NOT NULL DEFAULT '',    -- referencia para la Management API de Supabase; '' = BD PostgreSQL genérica (sin Management API)
     created_at    TEXT NOT NULL DEFAULT (datetime('now')),
     activo        INTEGER NOT NULL DEFAULT 1,
     schedule      TEXT,                               -- cron 5 campos (min hora dia mes dow); NULL/'' = solo manual
