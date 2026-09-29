@@ -44,19 +44,23 @@ async def _cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
     audit_srv.log_action("bot_status", "ok", user_id=user["id"], project_id=project["id"])
     full_project = projects_srv.get_project(project["id"], include_secret=True)
-    pat = accounts_srv.get_plaintext_pat(project["account_id"])
 
     db_ok, db_msg = await asyncio.to_thread(
         monitor_mod.check_database_connection, full_project["connection_plain"]
     )
-    api_ok, api_msg = await asyncio.to_thread(
-        monitor_mod.check_supabase_api, project["project_ref"], pat
-    )
     lines = [
         f"Estado de '{project['slug']}':",
         f"• Conexión DB: {'OK' if db_ok else 'FALLO'}\n  {db_msg}",
-        f"• Management API: {'OK' if api_ok else 'FALLO'}\n  {api_msg}",
     ]
+    # Sin project_ref no hay Management API (BD PostgreSQL genérica): solo psql.
+    if projects_srv.is_supabase_project(project):
+        pat = accounts_srv.get_plaintext_pat(project["account_id"])
+        api_ok, api_msg = await asyncio.to_thread(
+            monitor_mod.check_supabase_api, project["project_ref"], pat
+        )
+        lines.append(f"• Management API: {'OK' if api_ok else 'FALLO'}\n  {api_msg}")
+    else:
+        lines.append("• Management API: no aplica (PostgreSQL genérica, sin Supabase).")
     await notify_mod.send_message(context.bot, chat_id, "\n".join(lines))
 
 
