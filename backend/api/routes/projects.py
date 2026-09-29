@@ -79,7 +79,8 @@ async def update_project(project_id: int, request: Request, admin: dict = Depend
             nombre=data.get("nombre") or None,
             account_id=int(data.get("account_id")) if data.get("account_id") else None,
             connection=data.get("connection") or None,
-            project_ref=data.get("project_ref") or None,
+            # "" explícito = convertir a PostgreSQL genérica; clave ausente = sin cambio.
+            project_ref=data.get("project_ref") if "project_ref" in data else None,
             activo=as_bool(data.get("activo"), True),
             schedule=data.get("schedule"),
         )
