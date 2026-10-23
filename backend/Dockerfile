@@ -3,9 +3,20 @@ FROM python:3.12-slim
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
-# postgresql-client aporta pg_dump y psql, que usamos vía subprocess.
+# postgresql-client-18 (repositorio PGDG) aporta pg_dump y psql. Se usa la
+# misma major que el servidor para evitar "server version mismatch" al
+# respaldar PostgreSQL 18 (Supabase u otro proveedor).
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends postgresql-client \
+    && apt-get install -y --no-install-recommends ca-certificates curl gnupg \
+    && install -d /usr/share/postgresql-common/pgdg \
+    && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+        -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+    && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] \
+https://apt.postgresql.org/pub/repos/apt $(. /etc/os-release && echo "$VERSION_CODENAME")-pgdg main" \
+        > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends postgresql-client-18 \
+    && apt-get purge -y --auto-remove curl gnupg \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
