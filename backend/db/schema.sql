@@ -17,7 +17,9 @@ DROP TABLE IF EXISTS accounts;
 CREATE TABLE accounts (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     nombre      TEXT NOT NULL,
-    pat_encrypted TEXT NOT NULL,        -- Personal Access Token, cifrado (Fernet)
+    provider    TEXT NOT NULL DEFAULT 'supabase', -- supabase | postgres
+    pat_encrypted TEXT NOT NULL,        -- Personal Access Token, cifrado (Fernet).
+                                        -- En proveedores sin PAT se guarda cifrado vacío.
     created_at  TEXT NOT NULL DEFAULT (datetime('now')),
     activo      INTEGER NOT NULL DEFAULT 1
 );
@@ -29,9 +31,11 @@ CREATE TABLE projects (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     slug          TEXT NOT NULL UNIQUE,            -- identificador corto, usado en los comandos del bot
     nombre        TEXT NOT NULL,
+    provider      TEXT NOT NULL DEFAULT 'supabase', -- supabase | postgres
     account_id    INTEGER NOT NULL REFERENCES accounts(id),
-    connection_encrypted TEXT NOT NULL,            -- cadena de conexión a PostgreSQL (pooler), cifrada
-    project_ref   TEXT NOT NULL,                   -- referencia para la Management API
+    connection_encrypted TEXT NOT NULL,            -- cadena de conexión a PostgreSQL, cifrada
+    project_ref   TEXT NOT NULL,                   -- referencia de Supabase ('' si no aplica)
+    backup_options TEXT,                           -- JSON con flags opcionales de pg_dump
     created_at    TEXT NOT NULL DEFAULT (datetime('now')),
     activo        INTEGER NOT NULL DEFAULT 1,
     schedule      TEXT,                               -- cron 5 campos (min hora dia mes dow); NULL/'' = solo manual
