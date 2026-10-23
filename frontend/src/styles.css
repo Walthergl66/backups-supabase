@@ -349,6 +349,10 @@ table.t tr.empty td { text-align: center; color: var(--muted); padding: 40px 20p
 
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 22px; }
 
+.field-inline { display: flex; gap: 10px; align-items: stretch; }
+.field-inline .input { flex: 1; }
+.field-inline .btn { white-space: nowrap; }
+
 /* ---------------- misc ---------------- */
 .stack { display: flex; flex-direction: column; gap: 18px; }
 .inline-actions { display: flex; gap: 12px; flex-wrap: wrap; }
