@@ -298,9 +298,16 @@ def update_project(
     if new_provider == "supabase" and not new_project_ref:
         raise ProjectError("La referencia del proyecto (project_ref) es obligatoria para Supabase.")
 
-    new_account_id = account_id or current["account_id"]
+    current_provider = (
+        current["provider"] if "provider" in current.keys() else "supabase"
+    )
+    new_account_id = current["account_id"]
     if account_id is not None:
         new_account_id = _resolve_account(account_id, new_provider)
+    elif new_provider != current_provider:
+        # Al cambiar de proveedor sin indicar cuenta, se resuelve una
+        # compatible (grupo por defecto para PostgreSQL directo).
+        new_account_id = _resolve_account(None, new_provider)
 
     if backup_options is None:
         new_backup_options = (
@@ -310,7 +317,9 @@ def update_project(
         options = _normalize_backup_options(backup_options, new_provider)
         new_backup_options = json.dumps(options) if options else None
 
-    new_schedule = _validate_schedule(schedule) if schedule is not None else current.get("schedule")
+    new_schedule = (
+        _validate_schedule(schedule) if schedule is not None else current["schedule"]
+    )
     db.execute(
         """
         UPDATE projects
