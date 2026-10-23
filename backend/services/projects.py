@@ -297,6 +297,9 @@ def update_project(
     )
     if new_provider == "supabase" and not new_project_ref:
         raise ProjectError("La referencia del proyecto (project_ref) es obligatoria para Supabase.")
+    if new_provider == "postgres":
+        # Los proyectos genéricos no tienen referencia de Supabase.
+        new_project_ref = ""
 
     current_provider = (
         current["provider"] if "provider" in current.keys() else "supabase"
