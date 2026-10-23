@@ -106,8 +106,12 @@ def _dump_command(connection: str, dest: Path, options: dict) -> tuple[list[str]
             args += ["--username", str(data["user"])]
         if data["dbname"]:
             args += ["--dbname", str(data["dbname"])]
+        # El timeout de conexión no debe ser el del volcado completo (600 s
+        # por defecto): 30 s basta para distinguir un servidor caído.
         env.update(
-            providers.postgres.psql_env(connection, settings().backup_timeout_seconds)
+            providers.postgres.psql_env(
+                connection, min(settings().backup_timeout_seconds, 30)
+            )
         )
 
     if options.get("no_owner"):
