@@ -26,7 +26,11 @@ def test_reimportar_reutiliza_cuenta_con_mismo_pat(db):
 
     assert a2 == a1, "mismo PAT debe reutilizar la cuenta"
     assert a3 != a1, "PAT distinto debe crear otra cuenta"
-    assert len(accounts_srv.list_accounts()) == 2
+    # El grupo por defecto de PostgreSQL directo no cuenta como cuenta Supabase.
+    cuentas_supabase = [
+        a for a in accounts_srv.list_accounts() if a["provider"] == "supabase"
+    ]
+    assert len(cuentas_supabase) == 2
 
 
 def test_proyecto_eliminado_vuelve_a_disponible(db):
