@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
+import asyncio
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from api.deps import get_current_user, require_admin
 from backup import scheduler_jobs
-from services import accounts as accounts_srv
 from services import audit as audit_srv
 from services import backup_history as history_srv
 from services import projects as projects_srv
+from services import providers
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 
@@ -17,17 +19,18 @@ router = APIRouter(prefix="/api/projects", tags=["projects"])
 @router.get("")
 async def list_projects(
     estado: str = Query("activos"),
+    provider: str | None = Query(None),
     user: dict = Depends(get_current_user),
 ):
     # Los proyectos desactivados se gestionan solo desde admin.
     if estado in ("eliminados", "todos") and user.get("rol") != "admin":
         raise HTTPException(status_code=403, detail="Solo los administradores pueden ver proyectos desactivados.")
     if estado == "eliminados":
-        projects = [p for p in projects_srv.list_projects(only_active=False) if not p["activo"]]
+        projects = [p for p in projects_srv.list_projects(only_active=False, provider=provider) if not p["activo"]]
     elif estado == "todos":
-        projects = projects_srv.list_projects(only_active=False)
+        projects = projects_srv.list_projects(only_active=False, provider=provider)
     else:
-        projects = projects_srv.list_projects(only_active=True)
+        projects = projects_srv.list_projects(only_active=True, provider=provider)
     return projects
 
 
@@ -37,17 +40,43 @@ async def active_projects(user: dict = Depends(get_current_user)):
     return projects_srv.list_projects(only_active=True)
 
 
+@router.post("/test-connection")
+async def test_connection(request: Request, admin: dict = Depends(require_admin)):
+    """Prueba una URI de PostgreSQL antes de guardarla."""
+    data = await request.json()
+    connection = (data.get("connection") or "").strip()
+    provider_name = data.get("provider") or "postgres"
+    if not connection:
+        raise HTTPException(status_code=400, detail="Debes indicar una cadena de conexión.")
+    provider = providers.get_provider(provider_name)
+    result = await asyncio.to_thread(provider.test_connection, connection)
+    return {
+        "ok": result.ok,
+        "detalle": result.detalle,
+        "host": result.host,
+        "database": result.database,
+        "server_version": result.server_version,
+        "latency_ms": result.latency_ms,
+    }
+
+
 @router.post("")
 async def create_project(request: Request, admin: dict = Depends(require_admin)):
     data = await request.json()
     try:
+        account_id = int(data.get("account_id") or 0) or None
+    except (TypeError, ValueError):
+        account_id = None
+    try:
         project_id = projects_srv.create_project(
             slug=data.get("slug", ""),
             nombre=data.get("nombre", ""),
-            account_id=int(data.get("account_id", 0)),
+            account_id=account_id,
             connection=data.get("connection", ""),
             project_ref=data.get("project_ref", ""),
             schedule=data.get("schedule") or None,
+            provider=data.get("provider") or None,
+            backup_options=data.get("backup_options"),
         )
     except projects_srv.ProjectError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
@@ -69,15 +98,21 @@ async def get_project(project_id: int, user: dict = Depends(get_current_user)):
 async def update_project(project_id: int, request: Request, admin: dict = Depends(require_admin)):
     data = await request.json()
     try:
+        account_id = int(data.get("account_id") or 0) or None
+    except (TypeError, ValueError):
+        account_id = None
+    try:
         projects_srv.update_project(
             project_id,
             slug=data.get("slug") or None,
             nombre=data.get("nombre") or None,
-            account_id=int(data.get("account_id")) if data.get("account_id") else None,
+            account_id=account_id,
             connection=data.get("connection") or None,
-            project_ref=data.get("project_ref") or None,
+            project_ref=data.get("project_ref") if "project_ref" in data else None,
             activo=bool(data.get("activo", True)),
             schedule=data.get("schedule"),
+            provider=data.get("provider") or None,
+            backup_options=data.get("backup_options") if "backup_options" in data else None,
         )
     except projects_srv.ProjectError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
