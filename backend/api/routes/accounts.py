@@ -1,4 +1,4 @@
-"""API de cuentas de Supabase."""
+"""API de cuentas o grupos de conexión (Supabase o PostgreSQL directo)."""
 
 from __future__ import annotations
 
@@ -21,11 +21,16 @@ async def list_accounts(admin: dict = Depends(require_admin)):
 async def create_account(request: Request, admin: dict = Depends(require_admin)):
     data = await request.json()
     try:
-        account_id = accounts_srv.create_account(data.get("nombre", ""), data.get("pat", ""))
+        account_id = accounts_srv.create_account(
+            data.get("nombre", ""),
+            data.get("pat", ""),
+            provider=data.get("provider", "supabase"),
+        )
     except accounts_srv.AccountError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     audit_srv.log_action("web_cuenta_crear", "ok", web_user_id=admin["id"],
-                         detalle=f"cuenta '{(data.get('nombre') or '').strip()}'")
+                         detalle=f"cuenta '{(data.get('nombre') or '').strip()}' "
+                                 f"({data.get('provider', 'supabase')})")
     return {"id": account_id}
 
 
@@ -45,6 +50,7 @@ async def update_account(account_id: int, request: Request, admin: dict = Depend
             account_id,
             nombre=data.get("nombre") or None,
             pat=data.get("pat") or None,
+            provider=data.get("provider") or None,
         )
     except accounts_srv.AccountError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
