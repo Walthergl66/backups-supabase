@@ -11,6 +11,8 @@ from services import audit as audit_srv
 from services import projects as projects_srv
 from services import users as users_srv
 
+_PROVIDER_LABELS = {"supabase": "Supabase", "postgres": "PostgreSQL"}
+
 
 async def _cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     chat_id = update.effective_chat.id
@@ -18,20 +20,47 @@ async def _cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     if user is None:
         return
     has_pat = users_srv.has_pat(chat_id)
-    pat_info = "\n/register - registrar tu PAT de Supabase" if not has_pat else ""
-    addbd_info = "\n/addbd - agregar BD desde tu cuenta de Supabase" if has_pat else ""
+    pat_info = (
+        ""
+        if has_pat
+        else "\n/register - registrar tu PAT de Supabase (solo para importar proyectos)"
+    )
     text = (
-        "Hola {nombre}. Este bot gestiona backups de Supabase.\n\n"
+        "Hola {nombre}. Este bot gestiona backups de PostgreSQL: "
+        "cualquier base accesible por cadena de conexión y, opcionalmente, "
+        "proyectos de Supabase.\n\n"
         "Comandos disponibles:\n"
+        "/addbd - agregar una base (Supabase o PostgreSQL directo)\n"
         "{pat_info}"
-        "{addbd_info}"
         "/id - obtener tu chat_id\n"
         "/proyectos - proyectos activos conectados\n"
         "/backup <slug> - respaldo bajo demanda de un proyecto\n"
-        "/status <slug> - estado del proyecto (DB y Management API)\n"
+        "/test <slug> - probar la conexión a la base de datos\n"
+        "/status <slug> - estado del proyecto (DB y estado cloud)\n"
         "/historial <slug> - últimos backups del proyecto"
-    ).format(nombre=user["nombre"], pat_info=pat_info, addbd_info=addbd_info)
+    ).format(nombre=user["nombre"], pat_info=pat_info)
     await notify_mod.send_message(context.bot, chat_id, text)
+
+
+async def _visible_projects(user: dict) -> list[dict]:
+    """Proyectos que el usuario puede ver en /proyectos.
+
+    Los administradores ven todos. El resto ve los de su cuenta de Telegram
+    (importados con su PAT) y aquellos sobre los que tiene permisos explícitos.
+    """
+    projects = projects_srv.list_projects(only_active=True)
+    if user["rol"] == "admin":
+        return projects
+
+    account = users_srv.find_account_by_chat_id(user["telegram_chat_id"])
+    allowed_ids = {
+        perm["project_id"] for perm in users_srv.get_permissions(user["id"])
+    }
+    return [
+        p
+        for p in projects
+        if p["id"] in allowed_ids or (account and p["account_id"] == account["id"])
+    ]
 
 
 async def _cmd_proyectos(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -40,12 +69,7 @@ async def _cmd_proyectos(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if user is None:
         return
 
-    projects = projects_srv.list_projects(only_active=True)
-
-    if users_srv.has_pat(chat_id):
-        account = users_srv.find_account_by_chat_id(chat_id)
-        if account:
-            projects = [p for p in projects if p["account_id"] == account["id"]]
+    projects = await _visible_projects(user)
 
     if not projects:
         await notify_mod.send_message(
@@ -55,6 +79,7 @@ async def _cmd_proyectos(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     lines = [f"Proyectos activos ({len(projects)}):", ""]
     for p in projects:
         ultimo = p.get("ultimo_backup") or "sin backups"
-        lines.append(f"• {p['slug']} — último backup: {ultimo}")
+        etiqueta = _PROVIDER_LABELS.get(p.get("provider") or "postgres", "PostgreSQL")
+        lines.append(f"• {p['slug']} ({etiqueta}) — último backup: {ultimo}")
     await notify_mod.send_message(context.bot, chat_id, "\n".join(lines))
     audit_srv.log_action("bot_proyectos", "ok", user_id=user["id"])
