@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { createUser, getUser, saveUserPermissions, updateUser } from '../../services/users.js'
 import { listActiveProjects } from '../../services/projects.js'
+import { useAbort, isAbortError } from '../../hooks/useAbort.js'
 import { ApiError } from '../../services/http.js'
 import PageHead from '../../components/ui/PageHead.jsx'
 import { useToast } from '../../components/ui/Toast.jsx'
@@ -11,6 +12,7 @@ export default function UserForm() {
   const editing = Boolean(id)
   const navigate = useNavigate()
   const toast = useToast()
+  const signal = useAbort()
 
   const [form, setForm] = useState({ telegram_chat_id: '', nombre: '', rol: 'usuario', activo: true })
   const [projects, setProjects] = useState([])
@@ -19,7 +21,7 @@ export default function UserForm() {
   const [sending, setSending] = useState(false)
 
   const loadPermissions = (userId) =>
-    getUser(userId).then((u) => {
+    getUser(userId, { signal }).then((u) => {
       setForm((f) => ({ ...f, rol: u.rol, activo: u.activo !== false }))
       const map = {}
       for (const p of u.permissions || []) map[p.project_id] = p
@@ -27,7 +29,9 @@ export default function UserForm() {
     })
 
   useEffect(() => {
-    listActiveProjects().then(setProjects).catch((e) => setError(e.message))
+    listActiveProjects({ signal }).then(setProjects).catch((e) => {
+      if (!isAbortError(e)) setError(e.message)
+    })
   }, [])
 
   useEffect(() => {
@@ -37,7 +41,9 @@ export default function UserForm() {
 
   useEffect(() => {
     if (!id) return
-    loadPermissions(id).catch((e) => setError(e.message))
+    loadPermissions(id).catch((e) => {
+      if (!isAbortError(e)) setError(e.message)
+    })
   }, [id])
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
@@ -98,18 +104,18 @@ export default function UserForm() {
           <form onSubmit={submit}>
             <div className="form-grid">
               <div className="field">
-                <label className="label">ID de chat en Telegram</label>
-                <input className="input mono" value={form.telegram_chat_id} onChange={set('telegram_chat_id')}
+                <label className="label" htmlFor="tu-chat">ID de chat en Telegram</label>
+                <input id="tu-chat" className="input mono" value={form.telegram_chat_id} onChange={set('telegram_chat_id')}
                   required={!editing} disabled={editing} placeholder="123456789" />
                 <div className="hint">Es el número que identifica el chat del usuario con el bot.</div>
               </div>
               <div className="field">
-                <label className="label">Nombre para mostrar</label>
-                <input className="input" value={form.nombre} onChange={set('nombre')} required />
+                <label className="label" htmlFor="tu-nombre">Nombre para mostrar</label>
+                <input id="tu-nombre" className="input" value={form.nombre} onChange={set('nombre')} required />
               </div>
               <div className="field">
-                <label className="label">Rol de acceso</label>
-                <select className="select" value={form.rol} onChange={set('rol')}>
+                <label className="label" htmlFor="tu-rol">Rol de acceso</label>
+                <select id="tu-rol" className="select" value={form.rol} onChange={set('rol')}>
                   <option value="usuario">usuario</option>
                   <option value="admin">admin</option>
                 </select>
@@ -124,7 +130,7 @@ export default function UserForm() {
 
             {form.rol === 'usuario' && (
               <div className="field">
-                <label className="label">Acceso por proyecto</label>
+                <span className="label">Acceso por proyecto</span>
                 <div className="checkbox-scroll">
                   <table className="t">
                     <thead><tr><th>Proyecto</th><th style={{ textAlign: 'center' }}>Puede respaldar</th><th style={{ textAlign: 'center' }}>Puede monitorear</th></tr></thead>
@@ -133,10 +139,10 @@ export default function UserForm() {
                         <tr key={p.id}>
                           <td className="mono">{p.slug}</td>
                           <td style={{ textAlign: 'center' }}>
-                            <input type="checkbox" checked={Boolean(perms[p.id]?.can_backup)} onChange={togglePerm(p.id, 'can_backup')} />
+                            <input type="checkbox" aria-label={`Puede respaldar ${p.slug}`} checked={Boolean(perms[p.id]?.can_backup)} onChange={togglePerm(p.id, 'can_backup')} />
                           </td>
                           <td style={{ textAlign: 'center' }}>
-                            <input type="checkbox" checked={Boolean(perms[p.id]?.can_monitor)} onChange={togglePerm(p.id, 'can_monitor')} />
+                            <input type="checkbox" aria-label={`Puede monitorear ${p.slug}`} checked={Boolean(perms[p.id]?.can_monitor)} onChange={togglePerm(p.id, 'can_monitor')} />
                           </td>
                         </tr>
                       ))}

@@ -4,6 +4,7 @@ import {
   createProject, getProject, testProjectConnection, updateProject,
 } from '../../services/projects.js'
 import { listAccounts } from '../../services/accounts.js'
+import { useAbort, isAbortError } from '../../hooks/useAbort.js'
 import { ApiError } from '../../services/http.js'
 import PageHead from '../../components/ui/PageHead.jsx'
 import { useToast } from '../../components/ui/Toast.jsx'
@@ -31,6 +32,7 @@ export default function ProjectForm() {
   const editing = Boolean(id)
   const navigate = useNavigate()
   const toast = useToast()
+  const signal = useAbort()
 
   const [accounts, setAccounts] = useState([])
   const [form, setForm] = useState(emptyForm)
@@ -39,7 +41,9 @@ export default function ProjectForm() {
   const [testing, setTesting] = useState(false)
 
   useEffect(() => {
-    listAccounts().then(setAccounts).catch((e) => setError(e.message))
+    listAccounts({ signal }).then(setAccounts).catch((e) => {
+      if (!isAbortError(e)) setError(e.message)
+    })
   }, [])
 
   useEffect(() => {
@@ -49,7 +53,7 @@ export default function ProjectForm() {
 
   useEffect(() => {
     if (!id) return
-    getProject(id)
+    getProject(id, { signal })
       .then((p) => {
         const provider = p.provider || 'postgres'
         const options = p.backup_options || {}
@@ -66,7 +70,9 @@ export default function ProjectForm() {
           no_privileges: options.no_privileges ?? provider === 'postgres',
         })
       })
-      .catch((e) => setError(e.message))
+      .catch((e) => {
+        if (!isAbortError(e)) setError(e.message)
+      })
   }, [id])
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
@@ -154,13 +160,13 @@ export default function ProjectForm() {
           <form onSubmit={submit}>
             <div className="form-grid">
               <div className="field">
-                <label className="label">Nombre corto (slug)</label>
-                <input className="input" value={form.slug} onChange={set('slug')} placeholder="mi-proyecto" required disabled={editing} />
+                <label className="label" htmlFor="proj-slug">Nombre corto (slug)</label>
+                <input id="proj-slug" className="input" value={form.slug} onChange={set('slug')} placeholder="mi-proyecto" required disabled={editing} />
                 <div className="hint">Minúsculas, números y guiones. No se puede cambiar después.</div>
               </div>
               <div className="field">
-                <label className="label">Nombre visible</label>
-                <input className="input" value={form.nombre} onChange={set('nombre')} required />
+                <label className="label" htmlFor="proj-nombre">Nombre visible</label>
+                <input id="proj-nombre" className="input" value={form.nombre} onChange={set('nombre')} required />
               </div>
               <div className="field">
                 <label className="label">Proveedor</label>
@@ -169,6 +175,7 @@ export default function ProjectForm() {
                     <option key={p.value} value={p.value}>{p.label}</option>
                   ))}
                 </select>
+                <div className="hint">Las cuentas agrupan proyectos. Para PostgreSQL genérica sirve cualquier cuenta (su PAT no se usa).</div>
               </div>
               <div className="field">
                 <label className="label">{isSupabase ? 'Cuenta de Supabase' : 'Grupo de conexiones'}</label>

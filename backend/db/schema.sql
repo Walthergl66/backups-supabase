@@ -33,8 +33,8 @@ CREATE TABLE projects (
     nombre        TEXT NOT NULL,
     provider      TEXT NOT NULL DEFAULT 'supabase', -- supabase | postgres
     account_id    INTEGER NOT NULL REFERENCES accounts(id),
-    connection_encrypted TEXT NOT NULL,            -- cadena de conexión a PostgreSQL, cifrada
-    project_ref   TEXT NOT NULL,                   -- referencia de Supabase ('' si no aplica)
+    connection_encrypted TEXT NOT NULL,            -- cadena de conexión a PostgreSQL (pooler), cifrada
+    project_ref   TEXT NOT NULL DEFAULT '',        -- referencia para la Management API de Supabase; '' = BD PostgreSQL genérica (sin Management API)
     backup_options TEXT,                           -- JSON con flags opcionales de pg_dump
     created_at    TEXT NOT NULL DEFAULT (datetime('now')),
     activo        INTEGER NOT NULL DEFAULT 1,
@@ -79,7 +79,8 @@ CREATE TABLE web_users (
     activo        INTEGER NOT NULL DEFAULT 1,
     failed_attempts INTEGER NOT NULL DEFAULT 0,     -- intentos de login fallidos
     locked_until    TEXT,                           -- cuándo se desbloquea la cuenta (ISO)
-    totp_secret   TEXT,                             -- secreto TOTP (base32)
+    totp_secret   TEXT,                             -- secreto TOTP activo (base32)
+    totp_pending_secret TEXT,                       -- secreto TOTP pendiente de confirmar
     totp_enabled  INTEGER NOT NULL DEFAULT 0        -- 1 = 2FA activo
 );
 

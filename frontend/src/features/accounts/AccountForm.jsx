@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { createAccount, getAccount, updateAccount } from '../../services/accounts.js'
+import { useAbort, isAbortError } from '../../hooks/useAbort.js'
 import { ApiError } from '../../services/http.js'
 import PageHead from '../../components/ui/PageHead.jsx'
 import { useToast } from '../../components/ui/Toast.jsx'
@@ -15,6 +16,7 @@ export default function AccountForm() {
   const editing = Boolean(id)
   const navigate = useNavigate()
   const toast = useToast()
+  const signal = useAbort()
 
   const [form, setForm] = useState({ nombre: '', pat: '', provider: 'supabase' })
   const [error, setError] = useState('')
@@ -22,9 +24,11 @@ export default function AccountForm() {
 
   useEffect(() => {
     if (!id) return
-    getAccount(id)
+    getAccount(id, { signal })
       .then((a) => setForm({ nombre: a.nombre, pat: '', provider: a.provider || 'supabase' }))
-      .catch((e) => setError(e.message))
+      .catch((e) => {
+        if (!isAbortError(e)) setError(e.message)
+      })
   }, [id])
 
   useEffect(() => {
@@ -71,8 +75,8 @@ export default function AccountForm() {
         <div className="card-body">
           <form onSubmit={submit}>
             <div className="field">
-              <label className="label">Nombre de la cuenta</label>
-              <input className="input" value={form.nombre} onChange={set('nombre')} required />
+              <label className="label" htmlFor="acc-nombre">Nombre de la cuenta</label>
+              <input id="acc-nombre" className="input" value={form.nombre} onChange={set('nombre')} required />
             </div>
             <div className="field">
               <label className="label">Proveedor</label>

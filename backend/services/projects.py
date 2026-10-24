@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import re
 import unicodedata
+from urllib.parse import parse_qsl, urlparse
 
 from apscheduler.triggers.cron import CronTrigger
 
@@ -18,12 +19,21 @@ from core import crypto, db
 _SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 PROVIDERS = ("supabase", "postgres")
 _ALLOWED_BACKUP_OPTIONS = ("no_owner", "no_privileges")
+MAX_SLUG_LENGTH = 63
 
+# Marcador que devuelve Supabase cuando la connection string no trae la
+# contraseña real. Si se guardara literal, los backups fallarían con
+# "password" = "[YOUR-PASSWORD]".
+_PASSWORD_MARKER = "[YOUR-PASSWORD]"
 
-def slugify(text: str) -> str:
-    """Normaliza un texto a un slug ascii en minúsculas (a-z, 0-9, guiones)."""
-    folded = unicodedata.normalize("NFKD", text or "").encode("ascii", "ignore").decode("ascii")
-    return re.sub(r"[^a-z0-9]+", "-", folded.lower()).strip("-")
+# Parámetros libpq que sí se admiten en el query de la connection string.
+# Todo lo demás (options, host/port/dbname por parámetro...) se rechaza:
+# esos podrían redirigir la conexión a otro sitio o alterar la ejecución.
+_LIBPQ_ALLOWED_PARAMS = frozenset({
+    "sslmode", "sslrootcert", "sslcert", "sslkey",
+    "connect_timeout", "application_name", "target_session_attrs",
+    "gssencmode", "channel_binding", "keepalives", "keepalives_idle",
+})
 
 
 class ProjectError(Exception):
@@ -37,6 +47,38 @@ def _validate_provider(provider: str | None) -> str:
     return value
 
 
+def _require_real_connection(connection: str) -> None:
+    if _PASSWORD_MARKER in connection:
+        raise ProjectError(
+            "La cadena de conexión llega con el marcador [YOUR-PASSWORD]: "
+            "falta la contraseña real del proyecto."
+        )
+    parsed = urlparse(connection)
+    if parsed.scheme not in ("postgres", "postgresql"):
+        raise ProjectError(
+            "La cadena de conexión debe empezar por postgresql://"
+        )
+    if not parsed.hostname:
+        raise ProjectError(
+            "La cadena de conexión debe incluir el host "
+            "(******host:puerto/base)."
+        )
+    if parsed.query:
+        known = frozenset(k for k, _ in parse_qsl(parsed.query))
+        forbidden = sorted(known - _LIBPQ_ALLOWED_PARAMS)
+        if forbidden:
+            raise ProjectError(
+                "La cadena de conexión incluye parámetros libpq no permitidos "
+                f"({', '.join(forbidden)}) y se rechaza por seguridad."
+            )
+
+
+def slugify(text: str) -> str:
+    """Normaliza un texto a un slug ascii en minúsculas (a-z, 0-9, guiones)."""
+    folded = unicodedata.normalize("NFKD", text or "").encode("ascii", "ignore").decode("ascii")
+    return re.sub(r"[^a-z0-9]+", "-", folded.lower()).strip("-")
+
+
 def _validate_connection(connection: str) -> None:
     """Exige una URI de PostgreSQL válida.
 
@@ -48,6 +90,7 @@ def _validate_connection(connection: str) -> None:
             "La cadena de conexión debe ser una URI que empiece por "
             "'postgresql://' o 'postgres://'."
         )
+    _require_real_connection(connection)
 
 
 def _validate_schedule(schedule: str | None) -> str | None:
@@ -172,6 +215,15 @@ def _resolve_account(account_id: int | None, provider: str) -> int:
     return accounts_srv.ensure_default_group()
 
 
+def is_supabase_project(project: dict) -> bool:
+    """True si el proyecto tiene ref de Supabase (usa Management API).
+
+    Una ref vacía significa BD PostgreSQL genérica: backup, psql y scheduler
+    funcionan igual, pero no hay Management API (import, estado Supabase).
+    """
+    return bool((project.get("project_ref") or "").strip())
+
+
 def create_project(
     slug: str,
     nombre: str,
@@ -196,6 +248,8 @@ def create_project(
             "Slug inválido. Usa solo minúsculas, números, guiones o guiones bajos "
             "(debe empezar por letra o número)."
         )
+    if len(slug) > MAX_SLUG_LENGTH:
+        raise ProjectError(f"El slug no puede superar los {MAX_SLUG_LENGTH} caracteres.")
     if not nombre or not connection:
         raise ProjectError("Nombre y cadena de conexión son obligatorios.")
     _validate_connection(connection)
@@ -281,6 +335,8 @@ def update_project(
     if new_slug != current["slug"]:
         if not _SLUG_RE.match(new_slug):
             raise ProjectError("Slug inválido.")
+        if len(new_slug) > MAX_SLUG_LENGTH:
+            raise ProjectError(f"El slug no puede superar los {MAX_SLUG_LENGTH} caracteres.")
         clash = db.fetch_one("SELECT id FROM projects WHERE slug = ? AND id != ?", (new_slug, project_id))
         if clash is not None:
             raise ProjectError(f"Ya existe un proyecto con el slug '{new_slug}'.")

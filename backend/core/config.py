@@ -76,6 +76,15 @@ class Settings:
         self.web_host: str = os.getenv("WEB_HOST", "0.0.0.0")
         self.web_port: int = self._int_env("WEB_PORT", 8080)
 
+        # Proxies confiados para uvicorn (proxy_headers): permite a FastAPI
+        # ver el esquema real (https) y la IP real cuando nginx/tailscale
+        # reenvían X-Forwarded-Proto/For. Solo sufijos de red privada:
+        # un cliente externo nunca puede inyectar esos headers.
+        self.forwarded_allow_ips: str = os.getenv(
+            "FORWARDED_ALLOW_IPS",
+            "127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
+        )
+
         self.log_level: str = os.getenv("LOG_LEVEL", "INFO").strip().upper()
 
         # Resumen diario de salud por Telegram.

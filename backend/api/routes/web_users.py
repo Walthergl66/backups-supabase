@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from api.deps import get_current_user, require_admin
+from api.parse import as_bool
 from services import audit as audit_srv
 from services import web_users as web_users_srv
 
@@ -50,7 +51,7 @@ async def update_web_user(user_id: int, request: Request, admin: dict = Depends(
             username=data.get("username") or None,
             password=data.get("password") or None,
             rol=data.get("rol") or None,
-            activo=bool(data.get("activo", True)),
+            activo=as_bool(data.get("activo"), True),
         )
     except web_users_srv.WebUserError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
@@ -60,6 +61,8 @@ async def update_web_user(user_id: int, request: Request, admin: dict = Depends(
 
 @router.delete("/{user_id}")
 async def delete_web_user(user_id: int, admin: dict = Depends(require_admin)):
+    if web_users_srv.get_web_user_by_id(user_id) is None:
+        raise HTTPException(status_code=404, detail="Usuario web no encontrado.")
     try:
         web_users_srv.delete_web_user(user_id)
     except web_users_srv.WebUserError as exc:

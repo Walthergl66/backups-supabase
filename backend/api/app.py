@@ -6,6 +6,8 @@ Telegram, backups, bot) permanece en `services/` y `main.py`.
 
 from __future__ import annotations
 
+import json as _json
+
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -63,6 +65,28 @@ def create_app() -> FastAPI:
         )
 
     app.add_exception_handler(RateLimitExceeded, _rate_limit_handler)
+
+    @app.exception_handler(_json.JSONDecodeError)
+    async def _invalid_json_handler(request, exc: _json.JSONDecodeError):
+        # Cuerpo no-JSON: responder 400 y no 500 (un 500 alimenta escáneres
+        # y llena de stacktraces los logs).
+        return JSONResponse(
+            {"detail": "El cuerpo de la petición debe ser JSON válido."},
+            status_code=400,
+        )
+
+    @app.middleware("http")
+    async def _security_headers(request, call_next):
+        """Cabeceras de seguridad básicas en todas las respuestas de la API."""
+        response = await call_next(request)
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "no-referrer")
+        response.headers.setdefault(
+            "Content-Security-Policy", "frame-ancestors 'none'"
+        )
+        response.headers.setdefault("X-Permitted-Cross-Domain-Policies", "none")
+        return response
 
     @app.middleware("http")
     async def _throttle_middleware(request, call_next):

@@ -1,17 +1,26 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { deleteAccount, listAccounts } from '../../services/accounts.js'
+import { useAbort, isAbortError } from '../../hooks/useAbort.js'
 import { fmtFechaDate } from '../../utils/format.js'
 import PageHead from '../../components/ui/PageHead.jsx'
 import { useToast } from '../../components/ui/Toast.jsx'
+import { useDialog } from '../../components/ui/ConfirmDialog.jsx'
 import Badge from '../../components/ui/Badge.jsx'
 
 export default function Accounts() {
   const toast = useToast()
+  const { confirm } = useDialog()
+  const signal = useAbort()
   const [accounts, setAccounts] = useState([])
   const [error, setError] = useState('')
 
-  const load = () => listAccounts().then(setAccounts).catch((e) => setError(e.message))
+  const load = () =>
+    listAccounts({ signal })
+      .then(setAccounts)
+      .catch((e) => {
+        if (!isAbortError(e)) setError(e.message)
+      })
 
   useEffect(() => {
     load()
@@ -23,7 +32,12 @@ export default function Accounts() {
   }, [error])
 
   const del = async (a) => {
-    if (!window.confirm(`¿Eliminar la cuenta "${a.nombre}"?`)) return
+    const ok = await confirm(`¿Eliminar la cuenta "${a.nombre}"?`, {
+      title: 'Eliminar cuenta',
+      confirmLabel: 'Eliminar',
+      danger: true,
+    })
+    if (!ok) return
     try {
       await deleteAccount(a.id)
       toast.ok(`Cuenta "${a.nombre}" eliminada.`)

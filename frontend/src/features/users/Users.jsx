@@ -1,15 +1,24 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { deleteUser, listUsers } from '../../services/users.js'
+import { useAbort, isAbortError } from '../../hooks/useAbort.js'
 import PageHead from '../../components/ui/PageHead.jsx'
 import { useToast } from '../../components/ui/Toast.jsx'
+import { useDialog } from '../../components/ui/ConfirmDialog.jsx'
 
 export default function Users() {
   const toast = useToast()
+  const { confirm } = useDialog()
+  const signal = useAbort()
   const [users, setUsers] = useState([])
   const [error, setError] = useState('')
 
-  const load = () => listUsers().then(setUsers).catch((e) => setError(e.message))
+  const load = () =>
+    listUsers({ signal })
+      .then(setUsers)
+      .catch((e) => {
+        if (!isAbortError(e)) setError(e.message)
+      })
 
   useEffect(() => {
     load()
@@ -21,7 +30,12 @@ export default function Users() {
   }, [error])
 
   const del = async (u) => {
-    if (!window.confirm(`¿Eliminar al usuario de Telegram "${u.nombre}"?`)) return
+    const ok = await confirm(`¿Eliminar al usuario de Telegram "${u.nombre}"?`, {
+      title: 'Eliminar usuario de Telegram',
+      confirmLabel: 'Eliminar',
+      danger: true,
+    })
+    if (!ok) return
     try {
       await deleteUser(u.id)
       toast.ok(`Usuario de Telegram "${u.nombre}" eliminado.`)

@@ -37,6 +37,20 @@ def test_purge_history_borra_solo_lo_viejo(db):
     assert db.fetch_one("SELECT COUNT(*) c FROM backup_history WHERE resultado='ok' AND detalle IS NULL")["c"] >= 0
 
 
+def test_purge_retention_se_calcura_en_utc(db):
+    """El corte se calcula en UTC (formato en que la BD guarda las fechas) y
+    respeta el límite de N días exactos, sin depender de la zona local del host."""
+    from datetime import timezone
+
+    now = datetime.now(timezone.utc)
+    just_inside = (now - timedelta(days=30, minutes=-1)).strftime("%Y-%m-%d %H:%M:%S")
+    just_outside = (now - timedelta(days=30, minutes=1)).strftime("%Y-%m-%d %H:%M:%S")
+    db.execute("INSERT INTO audit_log (accion, resultado, timestamp) VALUES ('in','ok',?)", (just_inside,))
+    db.execute("INSERT INTO audit_log (accion, resultado, timestamp) VALUES ('out','ok',?)", (just_outside,))
+    assert audit.purge_old(30) == 1
+    assert db.fetch_one("SELECT COUNT(*) c FROM audit_log")["c"] == 1
+
+
 def test_audit_listado_paginado(db):
     for i in range(5):
         db.execute("INSERT INTO audit_log (accion, resultado) VALUES (?, 'ok')", (f"a{i}",))

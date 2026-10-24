@@ -73,7 +73,7 @@ async def _cmd_proyectos(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     if not projects:
         await notify_mod.send_message(
-            context.bot, chat_id, "No hay proyectos activos conectados todavía."
+            context.bot, chat_id, "No hay proyectos activos disponibles para ti."
         )
         return
     lines = [f"Proyectos activos ({len(projects)}):", ""]

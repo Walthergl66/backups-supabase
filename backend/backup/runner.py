@@ -23,6 +23,7 @@ import logging
 import os
 import shutil
 import subprocess
+import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -35,6 +36,19 @@ from services import providers
 from services.pg_errors import friendly_db_error
 
 logger = logging.getLogger(__name__)
+
+
+# Lock físico por proyecto: todos los caminos (bot con /backup, scheduler
+# automático) ejecutan pg_dump sobre el MISMO destino; dos ejecuciones
+# simultáneas del mismo slug compartirían nombre de archivo y truncarían
+# el .dump. Vive aquí para cubrir a cualquier llamador.
+_project_locks: dict[int, threading.Lock] = {}
+_project_locks_guard = threading.Lock()
+
+
+def _lock_for_project(project_id: int) -> threading.Lock:
+    with _project_locks_guard:
+        return _project_locks.setdefault(project_id, threading.Lock())
 
 
 @dataclass
@@ -62,7 +76,9 @@ def backup_path_for(slug: str) -> tuple[Path, Path]:
     """Devuelve (directorio del proyecto, ruta del nuevo archivo)."""
     base: Path = settings().backup_dir / slug
     base.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    # Microsegundos: incluso sin lock (o con llamadores futuros que lo
+    # omitan), dos ejecuciones en el mismo segundo no comparten archivo.
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     filename = f"{slug}_{stamp}.dump"
     return base, base / filename
 
@@ -144,11 +160,27 @@ def _dump_command(connection: str, dest: Path, options) -> tuple[list[str], dict
 
 
 def run_backup(project: dict) -> BackupResult:
-    """Ejecuta un pg_dump -Fc de un proyecto dado como dict de services.projects.
+    """Ejecuta un pg_dump -Fc de un proyecto, serializado por proyecto.
 
     `project` debe incluir: id, slug, connection_plain. Es una operación
-    bloqueante; llamarla desde asyncio/túnel del bot con `asyncio.to_thread`.
+    bloqueante; llamarla desde asyncio con `asyncio.to_thread`. El lock por
+    proyecto vive aquí (no solo en el bot) para que el scheduler automático
+    no lance un segundo pg_dump sobre el mismo archivo en paralelo.
     """
+    with _lock_for_project(project["id"]):
+        try:
+            return _run_backup(project)
+        except Exception as exc:  # noqa: BLE001 - nunca propagar y matar al llamador
+            slug = project.get("slug", "?")
+            logger.exception("Backup '%s' falló de forma inesperada: %s", slug, exc)
+            return BackupResult(
+                ok=False,
+                detalle=f"Error inesperado ejecutando el backup: {exc}",
+            )
+
+
+def _run_backup(project: dict) -> BackupResult:
+    """Implementa el backup real: ya se tiene el lock por proyecto."""
     start = time.monotonic()
     slug = project["slug"]
     conn_str = project["connection_plain"]
@@ -181,6 +213,7 @@ def run_backup(project: dict) -> BackupResult:
         return BackupResult(ok=False, detalle=msg, duracion_seg=elapsed)
     except subprocess.TimeoutExpired:
         elapsed = time.monotonic() - start
+        dest.unlink(missing_ok=True)  # el .dump parcial en claro se borra
         msg = f"El backup excedió el límite de {settings().backup_timeout_seconds}s y fue cancelado."
         logger.error("Backup '%s': %s", slug, msg)
         return BackupResult(ok=False, detalle=msg, duracion_seg=elapsed)
@@ -220,15 +253,32 @@ def run_backup(project: dict) -> BackupResult:
         dest.unlink(missing_ok=True)
         return BackupResult(ok=False, detalle=msg, duracion_seg=elapsed, exit_code=proc.returncode)
 
-    sql_path = _to_sql(dest, slug)
+    try:
+        sql_path = _to_sql(dest, slug)
+    except Exception:  # noqa: BLE001 - red de seguridad: no cortar el .dump
+        logger.exception("Conversión a SQL de '%s' lanzó un error inesperado; se omite el .sql.", slug)
+        dest.with_suffix(".sql").unlink(missing_ok=True)
+        sql_path = None
     size_sql = sql_path.stat().st_size if sql_path is not None else 0.0
 
     try:
         dest_enc = _encrypt_and_remove(dest)
+    except Exception as exc:
+        msg = f"No se pudo cifrar el backup en disco: {exc}"
+        logger.error("Backup '%s': %s", slug, msg)
+        # _encrypt_and_remove ya eliminó el .dump en claro; el .sql redundante
+        # también se descarta. Ningún backup sin cifrar queda en disco.
+        if sql_path is not None:
+            sql_path.unlink(missing_ok=True)
+        return BackupResult(ok=False, detalle=msg, duracion_seg=elapsed, exit_code=proc.returncode)
+
+    try:
         sql_enc = _encrypt_and_remove(sql_path) if sql_path is not None else None
     except Exception as exc:
         msg = f"No se pudo cifrar el backup en disco: {exc}"
         logger.error("Backup '%s': %s", slug, msg)
+        # El .dump ya está cifrado y el .sql en claro se eliminó dentro de
+        # _encrypt_and_remove: no queda texto plano de ambos a la intemperie.
         return BackupResult(ok=False, detalle=msg, duracion_seg=elapsed, exit_code=proc.returncode)
 
     removed = _apply_rotation(dest_dir, slug)
@@ -303,7 +353,7 @@ def _to_sql(dump_path: Path, slug: str) -> Path | None:
             shell=False,
             check=False,
         )
-    except OSError as exc:
+    except (OSError, subprocess.TimeoutExpired) as exc:
         logger.warning("Conversión a SQL '%s' no disponible: %s", dump_path.name, exc)
         sql_path.unlink(missing_ok=True)
         return None
@@ -322,12 +372,17 @@ def _to_sql(dump_path: Path, slug: str) -> Path | None:
 def _encrypt_and_remove(plain: Path) -> Path:
     """Cifra un archivo de backup y borra su claro del disco.
 
-    Devuelve la ruta cifrada (`<nombre>.enc`). Si el cifrado falla, el
-    archivo en claro se conserva (para no perder el backup) y la excepción
-    se propaga; el llamador la convierte en fallo del backup.
+    Devuelve la ruta cifrada (`<nombre>.enc`). Si el cifrado falla, se
+    intenta eliminar el archivo en claro (un backup sin cifrar no debe
+    quedar durmiendo en disco) y la excepción se propaga; el llamador la
+    convierte en fallo del backup.
     """
     enc = Path(f"{plain}.enc")
-    crypto_mod.encrypt_file(plain, enc)
+    try:
+        crypto_mod.encrypt_file(plain, enc)
+    except Exception:
+        plain.unlink(missing_ok=True)
+        raise
     plain.unlink(missing_ok=True)
     return enc
 

@@ -1,8 +1,8 @@
 import { api } from './http.js'
 
-export const listAccounts = () => api.get('/api/accounts')
+export const listAccounts = (options) => api.get('/api/accounts', options)
 
-export const getAccount = (id) => api.get(`/api/accounts/${id}`)
+export const getAccount = (id, options) => api.get(`/api/accounts/${id}`, options)
 
 export const createAccount = (data) => api.post('/api/accounts', data)
 

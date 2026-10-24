@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from api.deps import get_current_user, require_admin
+from api.parse import as_bool
 from services import audit as audit_srv
 from services import users as users_srv
 
@@ -61,7 +62,7 @@ async def update_user(user_id: int, request: Request, admin: dict = Depends(requ
             user_id,
             nombre=data.get("nombre") or None,
             rol=data.get("rol") or None,
-            activo=bool(data.get("activo", True)),
+            activo=as_bool(data.get("activo"), True),
         )
     except users_srv.UserError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
@@ -80,8 +81,8 @@ async def save_permissions(user_id: int, request: Request, admin: dict = Depends
         users_srv.upsert_permission(
             user_id,
             int(perm["project_id"]),
-            can_backup=bool(perm.get("can_backup", False)),
-            can_monitor=bool(perm.get("can_monitor", False)),
+            can_backup=as_bool(perm.get("can_backup"), False),
+            can_monitor=as_bool(perm.get("can_monitor"), False),
         )
     audit_srv.log_action("web_permisos", "ok", web_user_id=admin["id"], user_id=user_id)
     return {"ok": True}
@@ -89,6 +90,8 @@ async def save_permissions(user_id: int, request: Request, admin: dict = Depends
 
 @router.delete("/{user_id}")
 async def delete_user(user_id: int, admin: dict = Depends(require_admin)):
+    if users_srv.get_user_by_id(user_id) is None:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado.")
     users_srv.delete_user(user_id)
     audit_srv.log_action("web_usuario_eliminar", "ok", web_user_id=admin["id"],
                          user_id=user_id, detalle="id " + str(user_id))

@@ -38,6 +38,33 @@ def test_revoca_y_queda_invalido(db):
     assert store.validate_and_rotate(token) is None
 
 
+def test_rotacion_no_deja_sesiones_duplicadas(db):
+    """Regresión: un token solo se rota una vez (replay descartado), y nunca
+    quedan dos sesiones vivas del mismo token."""
+    store = refresh_tokens.RefreshTokenStore()
+    token = store.create(_make_user(db))
+    assert db.fetch_one("SELECT COUNT(*) AS c FROM refresh_sessions")["c"] == 1
+
+    rotated = store.validate_and_rotate(token)
+    assert rotated is not None
+    assert db.fetch_one("SELECT COUNT(*) AS c FROM refresh_sessions")["c"] == 1
+
+    assert store.validate_and_rotate(token) is None
+    assert db.fetch_one("SELECT COUNT(*) AS c FROM refresh_sessions")["c"] == 1
+
+
+def test_revoke_user_sessions(db):
+    """Revoca todas las sesiones de un usuario (p. ej. al resetear password)."""
+    store = refresh_tokens.RefreshTokenStore()
+    a = _make_user(db, username="a")
+    b = _make_user(db, username="b")
+    store.create(a)
+    store.create(b)
+    assert db.fetch_one("SELECT COUNT(*) AS c FROM refresh_sessions")["c"] == 2
+    assert store.revoke_user_sessions(a["id"]) == 1
+    assert db.fetch_one("SELECT COUNT(*) AS c FROM refresh_sessions")["c"] == 1
+
+
 def test_reinicio_mantiene_sesiones(db):
     first = refresh_tokens.RefreshTokenStore()
     token = first.create(_make_user(db))
@@ -54,3 +81,107 @@ def test_podados_vencidos_se_descarta(db):
     db.execute("UPDATE refresh_sessions SET expires_at = ?", (time.time() - 10,))
     assert store.validate_and_rotate(token) is None
     assert db.fetch_one("SELECT COUNT(*) AS c FROM refresh_sessions")["c"] == 0
+
+
+def test_purga_semanal_de_sesiones_expirables(db):
+    """purge_expired_sessions borra solo las vencidas (job semanal)."""
+    store = refresh_tokens.RefreshTokenStore()
+    store.create(_make_user(db, username="activa"))
+    vencida = _make_user(db, username="vencida")
+    db.execute(
+        "INSERT INTO refresh_sessions (token_hash, user_id, username, rol, created_at, expires_at) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
+        ("deadbeef", vencida["id"], vencida["username"], "admin", time.time(), time.time() - 10),
+    )
+    assert refresh_tokens.purge_expired_sessions() == 1
+    remaining = db.fetch_one("SELECT COUNT(*) AS c FROM refresh_sessions")["c"]
+    assert remaining == 1  # solo quedó la activa
+
+
+def test_cambio_de_password_revoca_sesiones(db):
+    """Regresión: resetear la contraseña invalida todas las sesiones web."""
+    from fastapi.testclient import TestClient
+    from api.app import app
+
+    uid = web_users.create_web_user("user1", "LargaSegura-2026", rol="viewer")
+    with TestClient(app) as c:
+        assert c.post("/api/auth/login", json={
+            "username": "user1", "password": "LargaSegura-2026",
+        }).status_code == 200
+        assert c.post("/api/auth/refresh").status_code == 200
+
+        web_users.update_web_user(uid, password="OtraSegura-2027!!")
+
+        assert c.post("/api/auth/refresh").status_code == 401
+        assert c.post("/api/auth/refresh").status_code == 401
+
+
+def test_sesion_vieja_sigue_valida_sin_cambio_de_password(db):
+    """Sanity: NO cambia de password, las sesiones existentes siguen vivas."""
+    from fastapi.testclient import TestClient
+    from api.app import app
+
+    uid = web_users.create_web_user("user1", "LargaSegura-2026", rol="viewer")
+    with TestClient(app) as c:
+        assert c.post("/api/auth/login", json={
+            "username": "user1", "password": "LargaSegura-2026",
+        }).status_code == 200
+
+        web_users.update_web_user(uid, rol="admin")
+
+        assert c.post("/api/auth/refresh").status_code == 200
+
+
+def test_refresh_rechazado_si_usuario_desactivado(db):
+    from fastapi.testclient import TestClient
+    from api.app import app
+
+    uid = web_users.create_web_user("user1", "LargaSegura-2026", rol="viewer")
+    with TestClient(app) as c:
+        assert c.post("/api/auth/login", json={
+            "username": "user1", "password": "LargaSegura-2026",
+        }).status_code == 200
+        assert c.post("/api/auth/refresh").status_code == 200
+
+        web_users.update_web_user(uid, activo=False)
+
+        # Desactivado: la sesión deja de renovarse (y se revoca).
+        assert c.post("/api/auth/refresh").status_code == 401
+        assert c.post("/api/auth/refresh").status_code == 401
+
+
+def test_refresh_rechazado_si_usuario_eliminado(db):
+    from fastapi.testclient import TestClient
+    from api.app import app
+
+    uid = web_users.create_web_user("user1", "LargaSegura-2026", rol="viewer")
+    with TestClient(app) as c:
+        assert c.post("/api/auth/login", json={
+            "username": "user1", "password": "LargaSegura-2026",
+        }).status_code == 200
+
+        web_users.delete_web_user(uid)
+
+        assert c.post("/api/auth/refresh").status_code == 401
+
+
+def test_cookie_secure_segun_esquema(db):
+    """La cookie de sesión es Secure solo cuando llega por HTTPS (tras Tailscale)."""
+    from fastapi.testclient import TestClient
+    from api.app import app
+    from services import web_users
+
+    web_users.create_web_user("user1", "LargaSegura-2026", rol="admin")
+    body = {"username": "user1", "password": "LargaSegura-2026"}
+
+    with TestClient(app, base_url="http://testserver") as c:
+        resp = c.post("/api/auth/login", json=body)
+        assert resp.status_code == 200
+        set_cookie = resp.headers.get("set-cookie", "")
+        assert "Secure" not in set_cookie
+        assert "HttpOnly" in set_cookie
+
+    with TestClient(app, base_url="https://testserver") as c:
+        resp = c.post("/api/auth/login", json=body)
+        assert resp.status_code == 200
+        assert "Secure" in resp.headers.get("set-cookie", "")

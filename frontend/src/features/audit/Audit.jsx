@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { listAudit } from '../../services/audit.js'
+import { useAbort, isAbortError } from '../../hooks/useAbort.js'
 import { fmtFecha } from '../../utils/format.js'
 import PageHead from '../../components/ui/PageHead.jsx'
 import { useToast } from '../../components/ui/Toast.jsx'
@@ -10,14 +11,17 @@ const PAGE_SIZE = 50
 
 export default function Audit() {
   const toast = useToast()
+  const signal = useAbort()
   const [data, setData] = useState(null)
   const [page, setPage] = useState(1)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    listAudit(page, PAGE_SIZE)
+    listAudit(page, PAGE_SIZE, { signal })
       .then(setData)
-      .catch((e) => setError(e.message))
+      .catch((e) => {
+        if (!isAbortError(e)) setError(e.message)
+      })
   }, [page])
 
   useEffect(() => {

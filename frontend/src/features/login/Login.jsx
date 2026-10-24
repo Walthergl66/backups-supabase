@@ -59,8 +59,9 @@ export default function Login() {
           {!totpPending ? (
             <>
               <div className="field">
-                <label className="label">Usuario</label>
+                <label className="label" htmlFor="login-username">Usuario</label>
                 <input
+                  id="login-username"
                   className="input"
                   autoFocus
                   autoComplete="username"
@@ -69,8 +70,9 @@ export default function Login() {
                 />
               </div>
               <div className="field">
-                <label className="label">Contraseña</label>
+                <label className="label" htmlFor="login-password">Contraseña</label>
                 <input
+                  id="login-password"
                   className="input"
                   type="password"
                   autoComplete="current-password"
@@ -82,8 +84,9 @@ export default function Login() {
           ) : (
             <>
               <div className="field">
-                <label className="label">Código 2FA</label>
+                <label className="label" htmlFor="login-code">Código 2FA</label>
                 <input
+                  id="login-code"
                   className="input"
                   autoFocus
                   inputMode="numeric"

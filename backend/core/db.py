@@ -56,6 +56,7 @@ def _migrate() -> None:
         "ALTER TABLE accounts ADD COLUMN provider TEXT NOT NULL DEFAULT 'supabase'",
         "ALTER TABLE projects ADD COLUMN provider TEXT NOT NULL DEFAULT 'supabase'",
         "ALTER TABLE projects ADD COLUMN backup_options TEXT",
+        "ALTER TABLE web_users ADD COLUMN totp_pending_secret TEXT",
         """
         CREATE TABLE IF NOT EXISTS refresh_sessions (
             id         INTEGER PRIMARY KEY AUTOINCREMENT,

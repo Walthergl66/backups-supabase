@@ -29,6 +29,7 @@ class IpThrottle:
         window = float(settings().throttle_window_seconds)
         with self._lock:
             self._prune_if_large(now, window)
+            self._prune_blocked_locked(now)
             if self._blocked_until.get(ip, 0) > now:
                 return False
             hits = [t for t in self._hits.get(ip, []) if now - t <= window]
@@ -50,6 +51,15 @@ class IpThrottle:
             self._hits = {
                 k: [t for t in v if now - t <= window] for k, v in self._hits.items()
             }
+
+    def _prune_blocked_locked(self, now: float) -> None:
+        # Los bloqueos expirados nunca volvían a podarse: un problema en una IP
+        # llenaba la estructura poco a poco. Se purgan cuando crecen demasiado.
+        if len(self._blocked_until) <= 500:
+            return
+        expired = [ip for ip, until in self._blocked_until.items() if until <= now]
+        for ip in expired:
+            del self._blocked_until[ip]
 
 
 throttle = IpThrottle()

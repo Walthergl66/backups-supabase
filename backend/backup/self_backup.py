@@ -37,8 +37,11 @@ def run_self_backup() -> Path:
         with sqlite3.connect(tmp) as target:
             source.backup(target)
 
-    crypto_mod.encrypt_file(tmp, enc)
-    tmp.unlink(missing_ok=True)
+    try:
+        crypto_mod.encrypt_file(tmp, enc)
+    finally:
+        # Aunque el cifrado falle, nunca se queda un `.tmp` en claro en disco.
+        tmp.unlink(missing_ok=True)
     _rotate(dest_dir)
     logger.info("Self-backup de la base creado: %s (%d bytes)", enc, enc.stat().st_size if enc.exists() else 0)
     return enc
@@ -81,10 +84,13 @@ async def send_latest_to_telegram() -> None:
         await notify_mod.notify_admins("⚠️ No se pudo descifrar el self-backup de la base para enviarlo.")
         return
 
+    # Se envía YA descifrado (en memoria): el nombre debe reflejarlo. Prefijarlo
+    # todavía con ".enc" haría creer a un admin que el archivo está cifrado.
+    plain_name = newest.name.removesuffix(".enc")
     await notify_mod.notify_admins_document(
-        newest.name,
+        plain_name,
         data,
-        caption=f"Self-backup de la base del panel ({newest.name.removesuffix('.enc')})",
+        caption=f"Self-backup de la base del panel ({plain_name}, contenido descifrado)",
     )
 
 
