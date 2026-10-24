@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getDashboard } from '../../services/dashboard.js'
+import { useAbort, isAbortError } from '../../hooks/useAbort.js'
 import { fmtFecha, fmtBytes } from '../../utils/format.js'
 import PageHead from '../../components/ui/PageHead.jsx'
 import { useToast } from '../../components/ui/Toast.jsx'
@@ -16,11 +17,16 @@ const tiles = [
 
 export default function Dashboard() {
   const toast = useToast()
+  const signal = useAbort()
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    getDashboard().then(setData).catch((e) => setError(e.message))
+    getDashboard({ signal })
+      .then(setData)
+      .catch((e) => {
+        if (!isAbortError(e)) setError(e.message)
+      })
   }, [])
 
   useEffect(() => {
@@ -31,7 +37,22 @@ export default function Dashboard() {
   if (error) return (
     <PageHead title="Dashboard" sub="Todo tu sistema de respaldos en un vistazo." />
   )
-  if (!data) return <div className="muted">Cargando…</div>
+  if (!data) return (
+    <>
+      <PageHead title="Dashboard" sub="Todo tu sistema de respaldos en un vistazo." />
+      <div className="grid grid-stat" aria-hidden>
+        {tiles.map(([key, label]) => (
+          <div className="card stat" key={key}>
+            <div className="stat-ico"><span className="skel-bar" style={{ width: 26, height: 26, borderRadius: 8 }} /></div>
+            <div style={{ flex: 1 }}>
+              <div className="stat-lbl">{label}</div>
+              <div className="skel-bar" style={{ width: '70%', height: 34, marginTop: 6 }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  )
 
   const d = data.dashboard
 

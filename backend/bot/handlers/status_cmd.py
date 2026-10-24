@@ -53,15 +53,25 @@ async def _cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         f"Estado de '{project['slug']}':",
         f"• Conexión DB: {'OK' if db_ok else 'FALLO'}\n  {db_msg}",
     ]
+<<<<<<< HEAD
 
     # El estado cloud solo existe en proveedores que lo soportan (Supabase).
     if (project.get("provider") or "postgres") == "supabase":
+=======
+    # Sin project_ref no hay Management API (BD PostgreSQL genérica): solo psql.
+    if projects_srv.is_supabase_project(project):
+>>>>>>> origin/main
         pat = accounts_srv.get_plaintext_pat(project["account_id"])
         api_ok, api_msg = await asyncio.to_thread(
             monitor_mod.check_supabase_api, project["project_ref"], pat
         )
         lines.append(f"• Management API: {'OK' if api_ok else 'FALLO'}\n  {api_msg}")
+<<<<<<< HEAD
 
+=======
+    else:
+        lines.append("• Management API: no aplica (PostgreSQL genérica, sin Supabase).")
+>>>>>>> origin/main
     await notify_mod.send_message(context.bot, chat_id, "\n".join(lines))
 
 

@@ -7,6 +7,7 @@ import asyncio
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from api.deps import get_current_user, require_admin
+from api.parse import as_bool
 from backup import scheduler_jobs
 from services import audit as audit_srv
 from services import backup_history as history_srv
@@ -91,6 +92,9 @@ async def get_project(project_id: int, user: dict = Depends(get_current_user)):
     project = projects_srv.get_project(project_id)
     if project is None:
         raise HTTPException(status_code=404, detail="Proyecto no encontrado.")
+    # Los proyectos desactivados solo los ve un admin (coherente con el listado).
+    if not project["activo"] and user.get("rol") != "admin":
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado.")
     return project
 
 
@@ -108,8 +112,14 @@ async def update_project(project_id: int, request: Request, admin: dict = Depend
             nombre=data.get("nombre") or None,
             account_id=account_id,
             connection=data.get("connection") or None,
+<<<<<<< HEAD
             project_ref=data.get("project_ref") if "project_ref" in data else None,
             activo=data.get("activo") if "activo" in data else None,
+=======
+            # "" explícito = convertir a PostgreSQL genérica; clave ausente = sin cambio.
+            project_ref=data.get("project_ref") if "project_ref" in data else None,
+            activo=as_bool(data.get("activo"), True),
+>>>>>>> origin/main
             schedule=data.get("schedule"),
             provider=data.get("provider") or None,
             backup_options=data.get("backup_options") if "backup_options" in data else None,
@@ -124,6 +134,8 @@ async def update_project(project_id: int, request: Request, admin: dict = Depend
 
 @router.delete("/{project_id}")
 async def delete_project(project_id: int, admin: dict = Depends(require_admin)):
+    if projects_srv.get_project(project_id) is None:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado.")
     try:
         projects_srv.delete_project(project_id)
     except projects_srv.ProjectError as exc:
@@ -155,6 +167,8 @@ async def restore_project(project_id: int, request: Request, admin: dict = Depen
 async def project_history(project_id: int, user: dict = Depends(get_current_user)):
     project = projects_srv.get_project(project_id)
     if project is None:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado.")
+    if not project["activo"] and user.get("rol") != "admin":
         raise HTTPException(status_code=404, detail="Proyecto no encontrado.")
     stats = projects_srv.project_extra_status(project_id)
     return {

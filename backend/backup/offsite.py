@@ -35,6 +35,12 @@ def _client():
     )
 
 
+def _prefix() -> str:
+    # Config lo normaliza a "backups", pero por defensa nunca operamos con
+    # prefijo vacío: con prefijo vacío la retención no listaría nada (C5).
+    return (settings().offsite_prefix.strip() or "backups").strip("/")
+
+
 def _rel_key(prefix: str, file: Path, base: Path) -> str:
     rel = file.relative_to(base).as_posix()
     if not prefix:
@@ -45,11 +51,10 @@ def _rel_key(prefix: str, file: Path, base: Path) -> str:
 def list_remote_keys() -> list[str]:
     """Todos los objetos del bucket bajo el prefijo configurado."""
     cfg = settings()
-    if not cfg.offsite_prefix:
-        return []
+    prefix = _prefix()
     keys: list[str] = []
     paginator = _client().get_paginator("list_objects_v2")
-    for page in paginator.paginate(Bucket=cfg.offsite_bucket, Prefix=cfg.offsite_prefix):
+    for page in paginator.paginate(Bucket=cfg.offsite_bucket, Prefix=prefix):
         for obj in page.get("Contents", []):
             keys.append(obj["Key"])
     return keys
@@ -77,10 +82,10 @@ def sync_new_backups(notify: bool = True) -> dict:
 
     new_files = [
         p for p in sorted(base.rglob("*.enc"))
-        if p.is_file() and _rel_key(cfg.offsite_prefix, p, base) not in remote
+        if p.is_file() and _rel_key(_prefix(), p, base) not in remote
     ]
     for file in new_files:
-        key = _rel_key(cfg.offsite_prefix, file, base)
+        key = _rel_key(_prefix(), file, base)
         try:
             client.upload_file(str(file), cfg.offsite_bucket, key)
             summary["uploaded"] += 1
@@ -105,18 +110,33 @@ def sync_new_backups(notify: bool = True) -> dict:
 
 
 def _apply_retention(client, cfg, keys: list[str], bucket: str | None = None) -> int:
-    """Borra los objetos más antiguos (por orden alfabético) por encima de keep_count."""
+    """Borra los objetos más antiguos por encima de keep_count, POR PROYECTO.
+
+    Los archivos viven en `prefix/<slug>/<slug>_fecha.dump.enc`, así que se
+    agrupan por subcarpeta (proyecto) y se conservan los `keep` más recientes
+    de cada uno. Ordenar de forma global y alfabética mezclaba los proyectos:
+    un slug que empezara antes ('a' vs 'b') acaparaba el límite y podía borrar
+    los respaldos recientes de otro proyecto.
+    """
     keep = max(1, cfg.offsite_keep_count)
     bucket = bucket or cfg.offsite_bucket
-    if len(keys) <= keep:
+    if not keys:
         return 0
-    ordered = sorted(keys)[: len(keys) - keep]
-    if not ordered:
-        return 0
+
+    groups: dict[str, list[str]] = {}
+    for key in keys:
+        parent, _, _ = key.rpartition("/")
+        project = parent.rsplit("/", 1)[-1] if parent else key
+        groups.setdefault(project, []).append(key)
+
     deleted = 0
-    for key in ordered:
-        client.delete_object(Bucket=bucket, Key=key)
-        deleted += 1
+    for per_project in groups.values():
+        if len(per_project) <= keep:
+            continue
+        ordered = sorted(per_project)[: len(per_project) - keep]
+        for key in ordered:
+            client.delete_object(Bucket=bucket, Key=key)
+            deleted += 1
     return deleted
 
 
@@ -128,7 +148,7 @@ def _report_errors(summary: dict, notify: bool) -> None:
 
     detail = "\n".join(f"- {sanitize.redact_secrets(e)}" for e in summary["errors"][:10])
     try:
-        notify_mod.notify_admins(
+        notify_mod.notify_admins_sync(
             "⚠️ Falló la copia fuera del sitio de los backups:\n" + detail
         )
     except Exception as exc:  # noqa: BLE001

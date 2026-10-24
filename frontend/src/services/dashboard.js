@@ -1,3 +1,3 @@
 import { api } from './http.js'
 
-export const getDashboard = () => api.get('/api/dashboard')
+export const getDashboard = (options) => api.get('/api/dashboard', options)

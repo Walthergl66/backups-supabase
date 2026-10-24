@@ -8,8 +8,6 @@ Protección anti fuerza bruta (en capas):
 
 from __future__ import annotations
 
-from math import ceil
-
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
@@ -61,26 +59,26 @@ async def login(request: Request):
     data = await request.json()
     username = (data.get("username") or "").strip()
     password = data.get("password") or ""
+    ip = request.client.host if request.client else ""
     if not username or not password:
         return JSONResponse(
             {"detail": "Usuario y contraseña son obligatorios."}, status_code=400
         )
 
-    locked_for = web_users_srv.get_lock_seconds(username)
+    locked_for = web_users_srv.get_lock_seconds(username, ip)
     if locked_for > 0:
         audit_srv.log_action(
             "web_login", "error", web_user_id=None,
-            detalle=f"bloqueado temporalmente el usuario '{username}'",
+            detalle=f"intento sobre cuenta bloqueada'{username}'",
         )
+        # Respuesta uniforme: no revela si la cuenta existe ni si está bloqueada.
         return JSONResponse(
-            {"detail": f"Cuenta bloqueada temporalmente. Intenta de nuevo en "
-                       f"{ceil(locked_for / 60)} min."},
-            status_code=423,
+            {"detail": "Usuario o contraseña incorrectos."}, status_code=401
         )
 
     user = web_users_srv.authenticate(username, password)
     if user is None:
-        attempts, locked_now = web_users_srv.record_failed_login(username)
+        attempts, locked_now = web_users_srv.record_failed_login(username, ip)
         audit_srv.log_action(
             "web_login", "error", web_user_id=None,
             detalle=f"intento con usuario '{username}' (fallo #{attempts})",
@@ -99,7 +97,7 @@ async def login(request: Request):
     # 2FA: si la cuenta tiene TOTP activo, el primer paso solo valida la contraseña.
     code = (data.get("code") or "").strip()
     if user.get("totp_enabled") and not web_users_srv.verify_totp_code(user["id"], code):
-        attempts, locked_now = web_users_srv.record_failed_login(username)
+        attempts, locked_now = web_users_srv.record_failed_login(username, ip)
         audit_srv.log_action(
             "web_login_2fa", "error", web_user_id=user["id"],
             detalle=f"código 2FA inválido (fallo #{attempts})",
@@ -117,7 +115,7 @@ async def login(request: Request):
             status_code=401,
         )
 
-    web_users_srv.reset_failed_logins(username)
+    web_users_srv.reset_failed_logins(username, ip)
     token = create_token(user)
     response = JSONResponse(
         {
@@ -152,11 +150,16 @@ async def refresh_token(request: Request):
         return JSONResponse({"detail": "Sesión expirada."}, status_code=401)
     new_refresh, entry = rotated
     raw_user = web_users_srv.get_web_user_by_id(entry["user_id"])
+    # Si el usuario fue eliminado o desactivado, se rechaza la renovación y se
+    # revoca la sesión: no seguimos rotando cookies de forma inútil.
+    if raw_user is None or not raw_user.get("activo"):
+        refresh_tokens.refresh_store.revoke(new_refresh)
+        return JSONResponse({"detail": "Sesión expirada."}, status_code=401)
     user = {
         "id": entry["user_id"],
-        "username": raw_user["username"] if raw_user else entry["username"],
-        "rol": raw_user["rol"] if raw_user else entry["rol"],
-        "totp_enabled": bool(raw_user and raw_user.get("totp_enabled")),
+        "username": raw_user["username"],
+        "rol": raw_user["rol"],
+        "totp_enabled": bool(raw_user.get("totp_enabled")),
     }
     token = create_token(user)
     response = JSONResponse(
@@ -175,10 +178,19 @@ async def refresh_token(request: Request):
 
 
 @router.post("/totp/setup")
-async def totp_setup(user: dict = Depends(get_current_user)):
-    """Genera un secreto TOTP pendiente para el usuario actual (devuelve QR)."""
+async def totp_setup(request: Request, user: dict = Depends(get_current_user)):
+    """Genera un secreto TOTP pendiente para el usuario actual (devuelve QR).
+
+    Si el 2FA ya está activo, exige el `code` actual para poder re-registrar
+    el dispositivo: una sesión sin pasar el 2FA no puede desactivar el factor
+    en silencio.
+    """
     try:
-        result = web_users_srv.generate_totp_secret(user["id"])
+        try:
+            data = await request.json()
+        except Exception:  # noqa: BLE001
+            data = {}
+        result = web_users_srv.generate_totp_secret(user["id"], data.get("code") or None)
     except web_users_srv.WebUserError as exc:
         return JSONResponse({"detail": str(exc)}, status_code=400)
     audit_srv.log_action("totp_setup", "ok", web_user_id=user["id"])

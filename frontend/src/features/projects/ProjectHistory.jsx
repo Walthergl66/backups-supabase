@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getProjectHistory } from '../../services/projects.js'
+import { useAbort, isAbortError } from '../../hooks/useAbort.js'
 import { fmtBytes, fmtFecha } from '../../utils/format.js'
 import PageHead from '../../components/ui/PageHead.jsx'
 import { useToast } from '../../components/ui/Toast.jsx'
@@ -9,13 +10,16 @@ import Badge from '../../components/ui/Badge.jsx'
 export default function ProjectHistory() {
   const { id } = useParams()
   const toast = useToast()
+  const signal = useAbort()
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    getProjectHistory(id)
+    getProjectHistory(id, { signal })
       .then(setData)
-      .catch((e) => setError(e.message))
+      .catch((e) => {
+        if (!isAbortError(e)) setError(e.message)
+      })
   }, [id])
 
   useEffect(() => {

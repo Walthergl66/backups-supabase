@@ -51,6 +51,29 @@ def test_rbac_proyectos_eliminados_solo_admin(db):
         assert c.get("/api/projects?estado=eliminados", headers=_token(viewer)).status_code == 403
 
 
+def test_viewer_no_lee_proyecto_archivado_por_id(db):
+    """Regresión: un viewer no debe poder leer por id un proyecto desactivado."""
+    from fastapi.testclient import TestClient
+    from api.app import app
+    from services import accounts as accounts_srv
+    from services import projects as projects_srv
+
+    create_web_user("admin", "AdminPass-12345", rol="admin")
+    create_web_user("viewer", "ViewerPass-12345", rol="viewer")
+    acc = accounts_srv.create_account("A", "pat-x")
+    pid = projects_srv.create_project(
+        "archivado", "Archivado", acc, "postgresql://u:p@h/db", "ref1"
+    )
+    projects_srv.delete_project(pid)
+
+    with TestClient(app) as c:
+        viewer = c.post("/api/auth/login", json={"username": "viewer", "password": "ViewerPass-12345"}).json()
+        admin = c.post("/api/auth/login", json={"username": "admin", "password": "AdminPass-12345"}).json()
+        assert c.get(f"/api/projects/{pid}", headers=_token(viewer)).status_code == 404
+        assert c.get(f"/api/projects/{pid}/history", headers=_token(viewer)).status_code == 404
+        assert c.get(f"/api/projects/{pid}", headers=_token(admin)).status_code == 200
+
+
 def test_sin_token_se_rechaza(db):
     from fastapi.testclient import TestClient
     from api.app import app

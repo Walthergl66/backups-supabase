@@ -4,6 +4,7 @@ import {
   createProject, getProject, testProjectConnection, updateProject,
 } from '../../services/projects.js'
 import { listAccounts } from '../../services/accounts.js'
+import { useAbort, isAbortError } from '../../hooks/useAbort.js'
 import { ApiError } from '../../services/http.js'
 import PageHead from '../../components/ui/PageHead.jsx'
 import { useToast } from '../../components/ui/Toast.jsx'
@@ -31,6 +32,7 @@ export default function ProjectForm() {
   const editing = Boolean(id)
   const navigate = useNavigate()
   const toast = useToast()
+  const signal = useAbort()
 
   const [accounts, setAccounts] = useState([])
   const [form, setForm] = useState(emptyForm)
@@ -39,7 +41,9 @@ export default function ProjectForm() {
   const [testing, setTesting] = useState(false)
 
   useEffect(() => {
-    listAccounts().then(setAccounts).catch((e) => setError(e.message))
+    listAccounts({ signal }).then(setAccounts).catch((e) => {
+      if (!isAbortError(e)) setError(e.message)
+    })
   }, [])
 
   useEffect(() => {
@@ -49,7 +53,7 @@ export default function ProjectForm() {
 
   useEffect(() => {
     if (!id) return
-    getProject(id)
+    getProject(id, { signal })
       .then((p) => {
         const provider = p.provider || 'postgres'
         const options = p.backup_options || {}
@@ -66,7 +70,9 @@ export default function ProjectForm() {
           no_privileges: options.no_privileges ?? provider === 'postgres',
         })
       })
-      .catch((e) => setError(e.message))
+      .catch((e) => {
+        if (!isAbortError(e)) setError(e.message)
+      })
   }, [id])
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
@@ -144,33 +150,47 @@ export default function ProjectForm() {
 
   return (
     <>
+<<<<<<< HEAD
       <PageHead
         title={editing ? 'Editar proyecto' : 'Nuevo proyecto'}
         sub="Conecta una base PostgreSQL y programa su respaldo automático."
       />
+=======
+      <PageHead title={editing ? 'Editar proyecto' : 'Nuevo proyecto'} sub="Conecta una base PostgreSQL (Supabase o genérica) y programa su respaldo automático." />
+>>>>>>> origin/main
 
       <div className="card">
         <div className="card-body">
           <form onSubmit={submit}>
             <div className="form-grid">
               <div className="field">
-                <label className="label">Nombre corto (slug)</label>
-                <input className="input" value={form.slug} onChange={set('slug')} placeholder="mi-proyecto" required disabled={editing} />
+                <label className="label" htmlFor="proj-slug">Nombre corto (slug)</label>
+                <input id="proj-slug" className="input" value={form.slug} onChange={set('slug')} placeholder="mi-proyecto" required disabled={editing} />
                 <div className="hint">Minúsculas, números y guiones. No se puede cambiar después.</div>
               </div>
               <div className="field">
-                <label className="label">Nombre visible</label>
-                <input className="input" value={form.nombre} onChange={set('nombre')} required />
+                <label className="label" htmlFor="proj-nombre">Nombre visible</label>
+                <input id="proj-nombre" className="input" value={form.nombre} onChange={set('nombre')} required />
               </div>
               <div className="field">
+<<<<<<< HEAD
                 <label className="label">Proveedor</label>
                 <select className="select" value={form.provider} onChange={setProvider} required>
                   {PROVIDERS.map((p) => (
                     <option key={p.value} value={p.value}>{p.label}</option>
+=======
+                <label className="label" htmlFor="proj-account">Cuenta</label>
+                <select id="proj-account" className="select" value={form.account_id} onChange={set('account_id')} required>
+                  <option value="" disabled>Selecciona una cuenta…</option>
+                  {accounts.map((a) => (
+                    <option key={a.id} value={a.id}>{a.nombre}</option>
+>>>>>>> origin/main
                   ))}
                 </select>
+                <div className="hint">Las cuentas agrupan proyectos. Para PostgreSQL genérica sirve cualquier cuenta (su PAT no se usa).</div>
               </div>
               <div className="field">
+<<<<<<< HEAD
                 <label className="label">{isSupabase ? 'Cuenta de Supabase' : 'Grupo de conexiones'}</label>
                 <select className="select" value={form.account_id} onChange={set('account_id')}
                   required={isSupabase}>
@@ -198,10 +218,16 @@ export default function ProjectForm() {
                 <label className="label">Respaldo automático (cron)</label>
                 <input className="input mono" value={form.schedule} onChange={set('schedule')} placeholder="30 3 * * *" />
                 <div className="hint">Cinco campos: minuto hora día mes día-semana. Vacío = solo manual.</div>
+=======
+                <label className="label" htmlFor="proj-ref">Referencia del proyecto (ref, solo Supabase)</label>
+                <input id="proj-ref" className="input mono" value={form.project_ref} onChange={set('project_ref')} placeholder="Vacío = PostgreSQL genérica" />
+                <div className="hint">Código del proyecto en tu dashboard de Supabase. Déjalo vacío para una base PostgreSQL genérica (sin Management API).</div>
+>>>>>>> origin/main
               </div>
             </div>
 
             <div className="field">
+<<<<<<< HEAD
               <label className="label">Conexión de la base de datos</label>
               <div className="field-inline">
                 <input className="input mono" type="text" value={form.connection} onChange={set('connection')}
@@ -211,6 +237,11 @@ export default function ProjectForm() {
                   {testing ? 'Probando…' : 'Probar'}
                 </button>
               </div>
+=======
+              <label className="label" htmlFor="proj-connection">Conexión de la base de datos</label>
+              <input id="proj-connection" className="input mono" type="text" value={form.connection} onChange={set('connection')}
+                placeholder="postgresql://usuario:clave@host:5432/base" required={!editing} />
+>>>>>>> origin/main
               <div className="hint">
                 {editing
                   ? 'Si la dejas vacía se conserva la actual (guardada cifrada).'

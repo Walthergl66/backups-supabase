@@ -10,14 +10,59 @@ from __future__ import annotations
 import json
 import re
 import unicodedata
+from urllib.parse import parse_qsl, urlparse
 
 from apscheduler.triggers.cron import CronTrigger
 
 from core import crypto, db
 
 _SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
+<<<<<<< HEAD
 PROVIDERS = ("supabase", "postgres")
 _ALLOWED_BACKUP_OPTIONS = ("no_owner", "no_privileges")
+=======
+MAX_SLUG_LENGTH = 63
+
+# Marcador que devuelve Supabase cuando la connection string no trae la
+# contraseña real. Si se guardara literal, los backups fallarían con
+# "password" = "[YOUR-PASSWORD]".
+_PASSWORD_MARKER = "[YOUR-PASSWORD]"
+
+# Parámetros libpq que sí se admiten en el query de la connection string.
+# Todo lo demás (options, host/port/dbname por parámetro...) se rechaza:
+# esos podrían redirigir la conexión a otro sitio o alterar la ejecución.
+_LIBPQ_ALLOWED_PARAMS = frozenset({
+    "sslmode", "sslrootcert", "sslcert", "sslkey",
+    "connect_timeout", "application_name", "target_session_attrs",
+    "gssencmode", "channel_binding", "keepalives", "keepalives_idle",
+})
+
+
+def _require_real_connection(connection: str) -> None:
+    if _PASSWORD_MARKER in connection:
+        raise ProjectError(
+            "La cadena de conexión llega con el marcador [YOUR-PASSWORD]: "
+            "falta la contraseña real del proyecto."
+        )
+    parsed = urlparse(connection)
+    if parsed.scheme not in ("postgres", "postgresql"):
+        raise ProjectError(
+            "La cadena de conexión debe empezar por postgresql://"
+        )
+    if not parsed.hostname:
+        raise ProjectError(
+            "La cadena de conexión debe incluir el host "
+            "(postgresql://usuario:clave@host:puerto/base)."
+        )
+    if parsed.query:
+        known = frozenset(k for k, _ in parse_qsl(parsed.query))
+        forbidden = sorted(known - _LIBPQ_ALLOWED_PARAMS)
+        if forbidden:
+            raise ProjectError(
+                "La cadena de conexión incluye parámetros libpq no permitidos "
+                f"({', '.join(forbidden)}) y se rechaza por seguridad."
+            )
+>>>>>>> origin/main
 
 
 def slugify(text: str) -> str:
@@ -151,6 +196,7 @@ def _base_select(last_backup_join: bool = True) -> str:
     )
 
 
+<<<<<<< HEAD
 def _resolve_account(account_id: int | None, provider: str) -> int:
     if account_id:
         account = db.fetch_one("SELECT id, provider FROM accounts WHERE id = ?", (account_id,))
@@ -188,6 +234,23 @@ def create_project(
     project_ref = (project_ref or "").strip()
     explicit_provider = (provider or "").strip().lower()
     provider = _validate_provider(explicit_provider or ("supabase" if project_ref else "postgres"))
+=======
+def is_supabase_project(project: dict) -> bool:
+    """True si el proyecto tiene ref de Supabase (usa Management API).
+
+    Una ref vacía significa BD PostgreSQL genérica: backup, psql y scheduler
+    funcionan igual, pero no hay Management API (import, estado Supabase).
+    """
+    return bool((project.get("project_ref") or "").strip())
+
+
+def create_project(slug: str, nombre: str, account_id: int, connection: str, project_ref: str | None = None,
+                   schedule: str | None = None) -> int:
+    slug = slug.strip()
+    nombre = (nombre or "").strip()
+    connection = connection.strip()
+    project_ref = (project_ref or "").strip()
+>>>>>>> origin/main
     schedule = _validate_schedule(schedule)
     if not slug:
         slug = slugify(nombre)
@@ -196,11 +259,20 @@ def create_project(
             "Slug inválido. Usa solo minúsculas, números, guiones o guiones bajos "
             "(debe empezar por letra o número)."
         )
+<<<<<<< HEAD
     if not nombre or not connection:
         raise ProjectError("Nombre y cadena de conexión son obligatorios.")
     _validate_connection(connection)
     if provider == "supabase" and not project_ref:
         raise ProjectError("La referencia del proyecto (project_ref) es obligatoria para Supabase.")
+=======
+    if len(slug) > MAX_SLUG_LENGTH:
+        raise ProjectError(f"El slug no puede superar los {MAX_SLUG_LENGTH} caracteres.")
+    if not nombre or not connection:
+        raise ProjectError("Nombre y cadena de conexión son obligatorios.")
+    # project_ref vacío = BD PostgreSQL genérica (sin Management API de Supabase).
+    _require_real_connection(connection)
+>>>>>>> origin/main
     existing = db.fetch_one("SELECT id FROM projects WHERE slug = ?", (slug,))
     if existing is not None:
         raise ProjectError(f"Ya existe un proyecto con el slug '{slug}'.")
@@ -281,9 +353,12 @@ def update_project(
     if new_slug != current["slug"]:
         if not _SLUG_RE.match(new_slug):
             raise ProjectError("Slug inválido.")
+        if len(new_slug) > MAX_SLUG_LENGTH:
+            raise ProjectError(f"El slug no puede superar los {MAX_SLUG_LENGTH} caracteres.")
         clash = db.fetch_one("SELECT id FROM projects WHERE slug = ? AND id != ?", (new_slug, project_id))
         if clash is not None:
             raise ProjectError(f"Ya existe un proyecto con el slug '{new_slug}'.")
+<<<<<<< HEAD
 
     new_connection_encrypted = current["connection_encrypted"]
     if connection and connection.strip():
@@ -323,6 +398,14 @@ def update_project(
     new_schedule = (
         _validate_schedule(schedule) if schedule is not None else current["schedule"]
     )
+=======
+    if connection and connection.strip():
+        _require_real_connection(connection.strip())
+    new_connection = crypto.encrypt(connection.strip()) if connection and connection.strip() else current["connection_encrypted"]
+    new_schedule = _validate_schedule(schedule) if schedule is not None else current["schedule"]
+    # project_ref None = sin cambio; "" = convertir a PostgreSQL genérica.
+    new_ref = current["project_ref"] if project_ref is None else project_ref.strip()
+>>>>>>> origin/main
     db.execute(
         """
         UPDATE projects
@@ -333,11 +416,17 @@ def update_project(
         (
             new_slug,
             (nombre or "").strip() or current["nombre"],
+<<<<<<< HEAD
             new_provider,
             new_account_id,
             new_connection_encrypted,
             new_project_ref,
             new_backup_options,
+=======
+            account_id or current["account_id"],
+            new_connection,
+            new_ref,
+>>>>>>> origin/main
             1 if activo is None else int(activo),
             new_schedule,
             project_id,

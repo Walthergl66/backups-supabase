@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { createAccount, getAccount, updateAccount } from '../../services/accounts.js'
+import { useAbort, isAbortError } from '../../hooks/useAbort.js'
 import { ApiError } from '../../services/http.js'
 import PageHead from '../../components/ui/PageHead.jsx'
 import { useToast } from '../../components/ui/Toast.jsx'
@@ -15,6 +16,7 @@ export default function AccountForm() {
   const editing = Boolean(id)
   const navigate = useNavigate()
   const toast = useToast()
+  const signal = useAbort()
 
   const [form, setForm] = useState({ nombre: '', pat: '', provider: 'supabase' })
   const [error, setError] = useState('')
@@ -22,9 +24,17 @@ export default function AccountForm() {
 
   useEffect(() => {
     if (!id) return
+<<<<<<< HEAD
     getAccount(id)
       .then((a) => setForm({ nombre: a.nombre, pat: '', provider: a.provider || 'supabase' }))
       .catch((e) => setError(e.message))
+=======
+    getAccount(id, { signal })
+      .then((a) => setForm({ nombre: a.nombre, pat: '' }))
+      .catch((e) => {
+        if (!isAbortError(e)) setError(e.message)
+      })
+>>>>>>> origin/main
   }, [id])
 
   useEffect(() => {
@@ -71,10 +81,11 @@ export default function AccountForm() {
         <div className="card-body">
           <form onSubmit={submit}>
             <div className="field">
-              <label className="label">Nombre de la cuenta</label>
-              <input className="input" value={form.nombre} onChange={set('nombre')} required />
+              <label className="label" htmlFor="acc-nombre">Nombre de la cuenta</label>
+              <input id="acc-nombre" className="input" value={form.nombre} onChange={set('nombre')} required />
             </div>
             <div className="field">
+<<<<<<< HEAD
               <label className="label">Proveedor</label>
               <select className="select" value={form.provider} onChange={set('provider')} required>
                 {PROVIDERS.map((p) => (
@@ -86,6 +97,13 @@ export default function AccountForm() {
                   ? 'Las cuentas de Supabase permiten importar proyectos y consultar su estado cloud.'
                   : 'Los grupos PostgreSQL directo agrupan conexiones que no dependen de Supabase.'}
               </div>
+=======
+              <label className="label" htmlFor="acc-pat">Token de acceso (PAT)</label>
+              <input id="acc-pat" className="input mono" type="password" autoComplete="off"
+                value={form.pat} onChange={set('pat')} required={!editing}
+                placeholder={editing ? 'Dejar vacío para conservar el actual' : 'sbp_…'} />
+              <div className="hint">Token personal de Supabase (empieza con sbp_…) para listar tus proyectos. Se guarda cifrado.</div>
+>>>>>>> origin/main
             </div>
             {isSupabase && (
               <div className="field">

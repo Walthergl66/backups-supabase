@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from core import db
 
@@ -63,7 +63,11 @@ def count_audit() -> int:
 
 def purge_old(days: int) -> int:
     """Borra entradas de auditoría anteriores a `days` días. Devuelve nº borrado."""
-    cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
+    # `timestamp` se guarda en UTC; el corte de retención debe calcularse en UTC
+    # (naive) para comparar con las cadenas almacenadas por SQLite.
+    cutoff = (
+        datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=days)
+    ).strftime("%Y-%m-%d %H:%M:%S")
     with db.connect() as conn:
         cur = conn.execute("DELETE FROM audit_log WHERE timestamp < ?", (cutoff,))
         return cur.rowcount

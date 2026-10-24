@@ -2,12 +2,30 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, Query
 
 from api.deps import get_current_user
 from core import db
+from core.config import settings
 
 router = APIRouter(prefix="/api/backups", tags=["backups"])
+
+
+def _relative_ruta(ruta: str | None) -> str | None:
+    """Expone la ruta RELATIVA a BACKUP_DIR: no se filtran rutas absolutas del
+    servidor (estructura interna) a los usuarios del panel."""
+    if not ruta:
+        return ruta
+    base = Path(settings().backup_dir)
+    path = Path(ruta)
+    if path.is_absolute():
+        try:
+            return path.relative_to(base).as_posix()
+        except ValueError:
+            pass
+    return path.name
 
 
 @router.get("")
@@ -28,8 +46,13 @@ async def list_backups(
     )
     total = db.fetch_one("SELECT COUNT(*) AS c FROM backup_history")
     total_count = total["c"] if total else 0
+    items = []
+    for r in rows:
+        d = dict(r)
+        d["ruta_archivo"] = _relative_ruta(d.get("ruta_archivo"))
+        items.append(d)
     return {
-        "rows": [dict(r) for r in rows],
+        "rows": items,
         "total": total_count,
         "page": page,
         "page_size": page_size,

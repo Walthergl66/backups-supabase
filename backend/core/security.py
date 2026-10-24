@@ -38,7 +38,8 @@ def _iterations_of(stored: str) -> int:
     """Iteraciones con que se calculó un hash almacenado."""
     if stored.startswith("pbkdf2_sha256$"):
         try:
-            return int(stored.split("$")[2])
+            _, iterations_s, _salt, _digest = stored.split("$", 3)
+            return int(iterations_s)
         except (IndexError, ValueError):
             return _active_iterations()
     return LEGACY_PBKDF2_ITERATIONS

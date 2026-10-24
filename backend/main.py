@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import secrets
 from logging.handlers import RotatingFileHandler
 from zoneinfo import ZoneInfo
@@ -32,6 +33,7 @@ from notify import telegram as notify_mod
 from notify.daily_summary import send_daily_summary as _send_daily_summary
 from services import audit as audit_srv
 from services import backup_history as history_srv
+from services import refresh_tokens as refresh_srv
 from services import web_users as web_users_srv
 
 
@@ -72,8 +74,8 @@ def bootstrap_admin() -> None:
 
     Las credenciales vienen de .env (WEB_ADMIN_USERNAME / WEB_ADMIN_PASSWORD).
     Si el password no está definido o no cumple la política de seguridad
-    (mínimo 12 caracteres), se genera uno aleatorio y se imprime una única
-    vez en los logs para que pueda iniciar sesión por primera vez.
+    (mínimo 12 caracteres), se genera uno aleatorio que se escribe en un
+    archivo provisional (nunca en app.log, que rota y persiste).
     """
     if web_users_srv.count_web_users() > 0:
         return
@@ -91,21 +93,40 @@ def bootstrap_admin() -> None:
     )
     log = logging.getLogger(__name__)
     if provisional:
-        log.warning(
-            "WEB_ADMIN_PASSWORD no definido o demasiado corto (mín. %d caracteres). "
-            "Se generó una provisional: %s. Inicia sesión y cámbiala cuanto antes.",
-            web_users_srv.MIN_PASSWORD_LENGTH, password,
-        )
+        # La contraseña provisional no se loguea (app.log rota y persiste la
+        # historia). Se escribe en un archivo de un solo uso junto a la BD.
+        provisional_path = cfg.db_path.parent / "provisional_admin_password.txt"
+        try:
+            provisional_path.write_text(
+                f"Usuario: {username}\nContraseña provisional: {password}\n"
+                "Inicia sesión y cámbiala cuanto antes.\n",
+                encoding="utf-8",
+            )
+            try:
+                os.chmod(provisional_path, 0o600)
+            except OSError:  # noqa: BLE001 - Windows no soporta chmod: no bloquea
+                pass
+        except OSError as exc:  # noqa: BLE001
+            log.error("No se pudo escribir la contraseña provisional en %s: %s",
+                      provisional_path, exc)
+            provisional_path = None
+        if provisional_path is not None:
+            log.warning(
+                "WEB_ADMIN_PASSWORD no definido o demasiado corto (mín. %d caracteres): "
+                "se generó una provisional. Inicia sesión con la contraseña de %s.",
+                web_users_srv.MIN_PASSWORD_LENGTH, provisional_path,
+            )
     else:
         log.info("Usuario admin inicial creado con WEB_ADMIN_PASSWORD del .env.")
 
 
 def retention_purge() -> dict:
-    """Purga audit_log y backup_history por antigüedad (configurable)."""
+    """Purga audit_log, backup_history y refresh_sessions por antigüedad."""
     cfg = settings()
     removal = {
         "audit": audit_srv.purge_old(cfg.audit_retention_days),
         "history": history_srv.purge_old(cfg.history_retention_days),
+        "sessions": refresh_srv.purge_expired_sessions(),
     }
     return removal
 
@@ -113,7 +134,8 @@ def retention_purge() -> dict:
 async def retention_purge_job(log: logging.Logger) -> None:
     try:
         removal = await asyncio.to_thread(retention_purge)
-        log.info("Purga de retención: audit=%d history=%d", removal["audit"], removal["history"])
+        log.info("Purga de retención: audit=%d history=%d sessions=%d",
+                 removal["audit"], removal["history"], removal["sessions"])
     except Exception as exc:  # noqa: BLE001
         log.exception("Falló la purga de retención de logs")
 
@@ -260,6 +282,8 @@ async def main() -> None:
         host=cfg.web_host,
         port=cfg.web_port,
         log_level="info",
+        proxy_headers=True,
+        forwarded_allow_ips=cfg.forwarded_allow_ips,
     )
     server = uvicorn.Server(config)
 

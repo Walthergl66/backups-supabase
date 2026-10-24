@@ -1,17 +1,26 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { deleteWebUser, listWebUsers } from '../../services/webUsers.js'
+import { useAbort, isAbortError } from '../../hooks/useAbort.js'
 import { fmtFechaDate } from '../../utils/format.js'
 import PageHead from '../../components/ui/PageHead.jsx'
 import { useToast } from '../../components/ui/Toast.jsx'
+import { useDialog } from '../../components/ui/ConfirmDialog.jsx'
 import Badge from '../../components/ui/Badge.jsx'
 
 export default function WebUsers() {
   const toast = useToast()
+  const { confirm } = useDialog()
+  const signal = useAbort()
   const [users, setUsers] = useState([])
   const [error, setError] = useState('')
 
-  const load = () => listWebUsers().then(setUsers).catch((e) => setError(e.message))
+  const load = () =>
+    listWebUsers({ signal })
+      .then(setUsers)
+      .catch((e) => {
+        if (!isAbortError(e)) setError(e.message)
+      })
 
   useEffect(() => {
     load()
@@ -23,7 +32,12 @@ export default function WebUsers() {
   }, [error])
 
   const del = async (u) => {
-    if (!window.confirm(`¿Eliminar al usuario web "${u.username}"?`)) return
+    const ok = await confirm(`¿Eliminar al usuario web "${u.username}"?`, {
+      title: 'Eliminar usuario web',
+      confirmLabel: 'Eliminar',
+      danger: true,
+    })
+    if (!ok) return
     try {
       await deleteWebUser(u.id)
       toast.ok(`Usuario web "${u.username}" eliminado.`)
