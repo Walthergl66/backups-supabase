@@ -28,11 +28,7 @@ export default function Projects() {
   }
 
   const load = () => {
-<<<<<<< HEAD
-    listProjects(estado, provider)
-=======
-    listProjects(estado, { signal })
->>>>>>> origin/main
+    listProjects(estado, provider, { signal })
       .then(setProjects)
       .catch((e) => {
         if (!isAbortError(e)) setError(e.message)

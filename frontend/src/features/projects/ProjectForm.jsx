@@ -150,14 +150,10 @@ export default function ProjectForm() {
 
   return (
     <>
-<<<<<<< HEAD
       <PageHead
         title={editing ? 'Editar proyecto' : 'Nuevo proyecto'}
         sub="Conecta una base PostgreSQL y programa su respaldo automático."
       />
-=======
-      <PageHead title={editing ? 'Editar proyecto' : 'Nuevo proyecto'} sub="Conecta una base PostgreSQL (Supabase o genérica) y programa su respaldo automático." />
->>>>>>> origin/main
 
       <div className="card">
         <div className="card-body">
@@ -173,24 +169,15 @@ export default function ProjectForm() {
                 <input id="proj-nombre" className="input" value={form.nombre} onChange={set('nombre')} required />
               </div>
               <div className="field">
-<<<<<<< HEAD
                 <label className="label">Proveedor</label>
                 <select className="select" value={form.provider} onChange={setProvider} required>
                   {PROVIDERS.map((p) => (
                     <option key={p.value} value={p.value}>{p.label}</option>
-=======
-                <label className="label" htmlFor="proj-account">Cuenta</label>
-                <select id="proj-account" className="select" value={form.account_id} onChange={set('account_id')} required>
-                  <option value="" disabled>Selecciona una cuenta…</option>
-                  {accounts.map((a) => (
-                    <option key={a.id} value={a.id}>{a.nombre}</option>
->>>>>>> origin/main
                   ))}
                 </select>
                 <div className="hint">Las cuentas agrupan proyectos. Para PostgreSQL genérica sirve cualquier cuenta (su PAT no se usa).</div>
               </div>
               <div className="field">
-<<<<<<< HEAD
                 <label className="label">{isSupabase ? 'Cuenta de Supabase' : 'Grupo de conexiones'}</label>
                 <select className="select" value={form.account_id} onChange={set('account_id')}
                   required={isSupabase}>
@@ -218,16 +205,10 @@ export default function ProjectForm() {
                 <label className="label">Respaldo automático (cron)</label>
                 <input className="input mono" value={form.schedule} onChange={set('schedule')} placeholder="30 3 * * *" />
                 <div className="hint">Cinco campos: minuto hora día mes día-semana. Vacío = solo manual.</div>
-=======
-                <label className="label" htmlFor="proj-ref">Referencia del proyecto (ref, solo Supabase)</label>
-                <input id="proj-ref" className="input mono" value={form.project_ref} onChange={set('project_ref')} placeholder="Vacío = PostgreSQL genérica" />
-                <div className="hint">Código del proyecto en tu dashboard de Supabase. Déjalo vacío para una base PostgreSQL genérica (sin Management API).</div>
->>>>>>> origin/main
               </div>
             </div>
 
             <div className="field">
-<<<<<<< HEAD
               <label className="label">Conexión de la base de datos</label>
               <div className="field-inline">
                 <input className="input mono" type="text" value={form.connection} onChange={set('connection')}
@@ -237,11 +218,6 @@ export default function ProjectForm() {
                   {testing ? 'Probando…' : 'Probar'}
                 </button>
               </div>
-=======
-              <label className="label" htmlFor="proj-connection">Conexión de la base de datos</label>
-              <input id="proj-connection" className="input mono" type="text" value={form.connection} onChange={set('connection')}
-                placeholder="postgresql://usuario:clave@host:5432/base" required={!editing} />
->>>>>>> origin/main
               <div className="hint">
                 {editing
                   ? 'Si la dejas vacía se conserva la actual (guardada cifrada).'

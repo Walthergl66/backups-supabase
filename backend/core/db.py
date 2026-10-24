@@ -52,14 +52,11 @@ def _migrate() -> None:
         "ALTER TABLE projects ADD COLUMN archived INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE web_users ADD COLUMN totp_secret TEXT",
         "ALTER TABLE web_users ADD COLUMN totp_enabled INTEGER NOT NULL DEFAULT 0",
-<<<<<<< HEAD
         # v2: soporte de PostgreSQL genérico además de Supabase.
         "ALTER TABLE accounts ADD COLUMN provider TEXT NOT NULL DEFAULT 'supabase'",
         "ALTER TABLE projects ADD COLUMN provider TEXT NOT NULL DEFAULT 'supabase'",
         "ALTER TABLE projects ADD COLUMN backup_options TEXT",
-=======
         "ALTER TABLE web_users ADD COLUMN totp_pending_secret TEXT",
->>>>>>> origin/main
         """
         CREATE TABLE IF NOT EXISTS refresh_sessions (
             id         INTEGER PRIMARY KEY AUTOINCREMENT,

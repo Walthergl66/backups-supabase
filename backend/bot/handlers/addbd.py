@@ -33,8 +33,7 @@ from services import users as users_srv
 
 logger = logging.getLogger(__name__)
 
-<<<<<<< HEAD
-ADD_BD_PROVIDER, ADD_BD_SELECT, ADD_BD_CONNECTION, ADD_BD_SLUG = range(1, 5)
+ADD_BD_PROVIDER, ADD_BD_SELECT, ADD_BD_CONNECTION, ADD_BD_SLUG, ADD_BD_PASSWORD = range(1, 6)
 
 _CONNECTION_HELP = (
     "Envía la cadena de conexión de PostgreSQL.\n"
@@ -44,13 +43,9 @@ _CONNECTION_HELP = (
     "• Usa una conexión directa (sin túneles SSH).\n"
     "• El mensaje con la cadena se borrará del chat tras leerlo."
 )
-=======
-ADD_BD_SELECT, ADD_BD_SLUG, ADD_BD_CONNECTION = range(1, 4)
-ADD_BD_PASSWORD = 4
 
 # Marcador con el que Supabase devuelve la connection string sin contraseña.
 _PASSWORD_MARKER = "[YOUR-PASSWORD]"
->>>>>>> origin/main
 
 
 def build_conversation() -> ConversationHandler:
@@ -60,11 +55,8 @@ def build_conversation() -> ConversationHandler:
             ADD_BD_PROVIDER: [MessageHandler(filters.TEXT & ~filters.COMMAND, _addbd_provider)],
             ADD_BD_SELECT: [MessageHandler(filters.TEXT & ~filters.COMMAND, _addbd_select)],
             ADD_BD_CONNECTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, _addbd_connection)],
-<<<<<<< HEAD
             ADD_BD_SLUG: [MessageHandler(filters.TEXT & ~filters.COMMAND, _addbd_slug)],
-=======
             ADD_BD_PASSWORD: [MessageHandler(filters.TEXT & ~filters.COMMAND, _addbd_password)],
->>>>>>> origin/main
         },
         fallbacks=[CommandHandler("cancel", _cancel)],
     )
@@ -233,9 +225,6 @@ async def _addbd_slug(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     connection = await asyncio.to_thread(api_srv.get_connection_string, pat, selected["ref"])
 
     if connection:
-<<<<<<< HEAD
-        return await _create_project(update, context, connection)
-=======
         if _PASSWORD_MARKER in connection:
             context.user_data["addbd_connection"] = connection
             await notify_mod.send_message(
@@ -245,17 +234,14 @@ async def _addbd_slug(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
                 "(se guardará, cifrada, dentro de la cadena de conexión)"
             )
             return ADD_BD_PASSWORD
-        context.user_data["addbd_connection"] = connection
-        await _create_project_from_selection(update, context)
-        return ConversationHandler.END
->>>>>>> origin/main
+        return await _create_project(update, context, connection)
 
     await notify_mod.send_message(
         context.bot, chat_id,
         "No pude obtener la cadena de conexión automáticamente.\n"
         "Envía la cadena de conexión (pooler) desde el Dashboard de Supabase:\n"
         "Project Settings > Database > Connection string > Transaction mode\n\n"
-        "Ejemplo: postgresql://postgres.xxx:password@aws-0-us-east-1.pooler.supabase.com:5432/postgres"
+        "Ejemplo: ******aws-0-us-east-1.pooler.supabase.com:5432/postgres"
     )
     return ADD_BD_CONNECTION
 
@@ -312,23 +298,10 @@ async def _addbd_connection(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     return ADD_BD_SLUG
 
 
-<<<<<<< HEAD
-async def _create_direct_project(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> int:
-    """Un proyecto PostgreSQL directo aún no tiene conexión: se pide ahora."""
-    chat_id = update.effective_chat.id
-    await notify_mod.send_message(context.bot, chat_id, _CONNECTION_HELP)
-    return ADD_BD_CONNECTION
-
-
-async def _create_project(
-    update: Update, context: ContextTypes.DEFAULT_TYPE, connection: str
-) -> int:
-=======
 async def _addbd_password(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     chat_id = update.effective_chat.id
     password = update.message.text.strip()
+    await _delete_message(update)
     if not password:
         await notify_mod.send_message(
             context.bot, chat_id,
@@ -347,12 +320,29 @@ async def _addbd_password(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         return ADD_BD_PASSWORD
 
     context.user_data["addbd_connection"] = final_connection
-    await _create_project_from_selection(update, context)
-    return ConversationHandler.END
+    if context.user_data.get("addbd_slug"):
+        return await _create_project(update, context, final_connection)
+
+    await notify_mod.send_message(
+        context.bot, chat_id,
+        "Envía un slug para usar en comandos del bot.\n"
+        "Solo minúsculas, números, guiones o guiones bajos."
+    )
+    return ADD_BD_SLUG
 
 
-async def _create_project_from_selection(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
->>>>>>> origin/main
+async def _create_direct_project(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int:
+    """Un proyecto PostgreSQL directo aún no tiene conexión: se pide ahora."""
+    chat_id = update.effective_chat.id
+    await notify_mod.send_message(context.bot, chat_id, _CONNECTION_HELP)
+    return ADD_BD_CONNECTION
+
+
+async def _create_project(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, connection: str
+) -> int:
     chat_id = update.effective_chat.id
     user = await _auth_or_deny(update, context)
     if user is None:
