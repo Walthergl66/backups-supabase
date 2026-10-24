@@ -14,6 +14,13 @@ from typing import Any, Iterable
 
 from core.config import settings
 
+# Versión del esquema. Se incrementa con cada migración incremental para
+# poder auditar en qué estado está una base existente.
+SCHEMA_VERSION = 2
+
+# Cuenta/grupo por defecto para proyectos PostgreSQL sin proveedor cloud.
+DEFAULT_GROUP_NAME = "Conexiones directas"
+
 
 def connect() -> sqlite3.Connection:
     conn = sqlite3.connect(settings().db_path)
@@ -45,6 +52,10 @@ def _migrate() -> None:
         "ALTER TABLE projects ADD COLUMN archived INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE web_users ADD COLUMN totp_secret TEXT",
         "ALTER TABLE web_users ADD COLUMN totp_enabled INTEGER NOT NULL DEFAULT 0",
+        # v2: soporte de PostgreSQL genérico además de Supabase.
+        "ALTER TABLE accounts ADD COLUMN provider TEXT NOT NULL DEFAULT 'supabase'",
+        "ALTER TABLE projects ADD COLUMN provider TEXT NOT NULL DEFAULT 'supabase'",
+        "ALTER TABLE projects ADD COLUMN backup_options TEXT",
         "ALTER TABLE web_users ADD COLUMN totp_pending_secret TEXT",
         """
         CREATE TABLE IF NOT EXISTS refresh_sessions (
@@ -69,6 +80,27 @@ def _migrate() -> None:
         )
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_refresh_sessions_expiry ON refresh_sessions (expires_at)"
+        )
+        _ensure_default_group(conn)
+        conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+
+
+def _ensure_default_group(conn: sqlite3.Connection) -> None:
+    """Crea el grupo para conexiones PostgreSQL directas si aún no existe.
+
+    Así los proyectos genéricos siempre tienen un `account_id` válido sin
+    necesidad de reconstruir la tabla `projects` (SQLite no permite quitar
+    el NOT NULL de una FK existente).
+    """
+    from core import crypto
+
+    row = conn.execute(
+        "SELECT id FROM accounts WHERE provider = 'postgres' ORDER BY id LIMIT 1"
+    ).fetchone()
+    if row is None:
+        conn.execute(
+            "INSERT INTO accounts (nombre, provider, pat_encrypted) VALUES (?, 'postgres', ?)",
+            (DEFAULT_GROUP_NAME, crypto.encrypt("")),
         )
 
 

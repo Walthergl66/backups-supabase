@@ -78,7 +78,7 @@ export default function Layout() {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M12 3v9l3 3"/><path d="M5 15a7 7 0 1 1 2.1 5"/></svg>
           </div>
           <div>
-            <div className="brand-name">Supabase Backups</div>
+            <div className="brand-name">PostgreSQL Backups</div>
             <div className="brand-sub">Respaldo y monitoreo</div>
           </div>
         </div>
@@ -106,7 +106,7 @@ export default function Layout() {
         <div className="sidebar-foot">
           <span className="status-dot" />
           Operativo
-          <span className="sidebar-ver">Supabase Backups · v1.0</span>
+          <span className="sidebar-ver">PostgreSQL Backups · v1.1</span>
         </div>
       </aside>
 

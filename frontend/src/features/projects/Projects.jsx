@@ -8,6 +8,8 @@ import { useToast } from '../../components/ui/Toast.jsx'
 import { useDialog } from '../../components/ui/ConfirmDialog.jsx'
 import Badge from '../../components/ui/Badge.jsx'
 
+const PROVIDER_LABELS = { supabase: 'Supabase', postgres: 'PostgreSQL' }
+
 export default function Projects() {
   const toast = useToast()
   const { confirm, prompt } = useDialog()
@@ -16,9 +18,17 @@ export default function Projects() {
   const [error, setError] = useState('')
   const [params, setParams] = useSearchParams()
   const estado = params.get('estado') || 'activos'
+  const provider = params.get('provider') || ''
+
+  const setParam = (key, value) => {
+    const next = new URLSearchParams(params)
+    if (value) next.set(key, value)
+    else next.delete(key)
+    setParams(next)
+  }
 
   const load = () => {
-    listProjects(estado, { signal })
+    listProjects(estado, provider, { signal })
       .then(setProjects)
       .catch((e) => {
         if (!isAbortError(e)) setError(e.message)
@@ -29,7 +39,7 @@ export default function Projects() {
     setError('')
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [estado])
+  }, [estado, provider])
 
   useEffect(() => {
     if (error) toast.err(error)
@@ -73,10 +83,21 @@ export default function Projects() {
 
   return (
     <>
-      <PageHead title="Proyectos" sub="Los proyectos conectados con su respaldo automático.">
+      <PageHead title="Proyectos" sub="Las bases PostgreSQL conectadas con su respaldo automático.">
         <div className="inline-actions">
+          <select
+            className="select"
+            style={{ width: 'auto' }}
+            value={provider}
+            onChange={(e) => setParam('provider', e.target.value)}
+            aria-label="Filtrar por proveedor"
+          >
+            <option value="">Todos los proveedores</option>
+            <option value="postgres">PostgreSQL</option>
+            <option value="supabase">Supabase</option>
+          </select>
           {isAdmin && (
-            <Link className="btn btn-ghost" to={`/proyectos?estado=${estado === 'eliminados' ? 'activos' : 'eliminados'}`}>
+            <Link className="btn btn-ghost" to={`/proyectos?estado=${estado === 'eliminados' ? 'activos' : 'eliminados'}${provider ? `&provider=${provider}` : ''}`}>
               {estado === 'eliminados' ? 'Ver activos' : 'Ver eliminados'}
             </Link>
           )}
@@ -93,6 +114,7 @@ export default function Projects() {
               <tr>
                 <th>Identificador</th>
                 <th>Nombre</th>
+                <th>Proveedor</th>
                 <th>Cuenta</th>
                 <th>Código</th>
                 <th>Estado</th>
@@ -104,6 +126,11 @@ export default function Projects() {
                 <tr key={p.id}>
                   <td className="mono">{p.slug}</td>
                   <td>{p.nombre}</td>
+                  <td>
+                    <Badge tone={p.provider === 'supabase' ? 'info' : 'mid'}>
+                      {PROVIDER_LABELS[p.provider] || 'PostgreSQL'}
+                    </Badge>
+                  </td>
                   <td className="muted">{p.account_nombre}</td>
                   <td className="mono muted">{p.project_ref ? p.project_ref.slice(0, 8) + '…' : '-'}</td>
                   <td>
@@ -131,7 +158,7 @@ export default function Projects() {
                 </tr>
               ))}
               {!projects.length && (
-                <tr className="empty"><td colSpan={6}>No hay proyectos en esta vista.</td></tr>
+                <tr className="empty"><td colSpan={7}>No hay proyectos en esta vista.</td></tr>
               )}
             </tbody>
           </table>

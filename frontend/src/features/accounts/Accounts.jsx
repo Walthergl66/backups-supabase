@@ -49,7 +49,7 @@ export default function Accounts() {
 
   return (
     <>
-      <PageHead title="Cuentas" sub="Cuentas de Supabase que alimentan el panel.">
+      <PageHead title="Cuentas" sub="Grupos de proyectos de Supabase y conexiones PostgreSQL directas.">
         <Link className="btn btn-primary" to="/cuentas/nueva">Nueva cuenta</Link>
       </PageHead>
 
@@ -57,12 +57,17 @@ export default function Accounts() {
         <div className="table-scroll">
           <table className="t">
             <thead>
-              <tr><th>Nombre</th><th>Token</th><th>Estado</th><th>Creada</th><th className="td-actions">Acciones</th></tr>
+              <tr><th>Nombre</th><th>Proveedor</th><th>Token</th><th>Estado</th><th>Creada</th><th className="td-actions">Acciones</th></tr>
             </thead>
             <tbody>
               {accounts.map((a) => (
                 <tr key={a.id}>
                   <td>{a.nombre}</td>
+                  <td>
+                    <Badge tone={a.provider === 'supabase' ? 'info' : 'mid'}>
+                      {a.provider === 'supabase' ? 'Supabase' : 'PostgreSQL'}
+                    </Badge>
+                  </td>
                   <td className="mono muted">{a.pat_masked}</td>
                   <td>{a.activo ? <Badge tone="ok">Activa</Badge> : <Badge tone="mid">Inactiva</Badge>}</td>
                   <td className="muted">{fmtFechaDate(a.created_at)}</td>
@@ -73,7 +78,7 @@ export default function Accounts() {
                 </tr>
               ))}
               {!accounts.length && (
-                <tr className="empty"><td colSpan={5}>Sin cuentas registradas.</td></tr>
+                <tr className="empty"><td colSpan={6}>Sin cuentas registradas.</td></tr>
               )}
             </tbody>
           </table>

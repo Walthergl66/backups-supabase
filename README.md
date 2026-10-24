@@ -1,15 +1,20 @@
-# Bot de Backups y Monitoreo de Supabase
+# Bot de Backups y Monitoreo de PostgreSQL
 
-Sistema multiplataforma (Linux, macOS, Windows) para respaldar bases de datos de
-Supabase **bajo demanda** desde Telegram y administrar todas las conexiones desde
-una interfaz **web progresiva (PWA)** adaptable a móvil, sin tocar código ni
-archivos de configuración.
+Sistema multiplataforma (Linux, macOS, Windows) para respaldar bases de datos
+**PostgreSQL** (cualquier servidor accesible por cadena de conexión) **bajo
+demanda** desde Telegram, con **Supabase como proveedor opcional** para importar
+proyectos por PAT. Todo se administra desde una interfaz **web progresiva (PWA)**
+adaptable a móvil, sin tocar código ni archivos de configuración.
+
+El motor de backups es siempre el mismo: `pg_dump -Fc` contra la URI de
+PostgreSQL. El proveedor (`postgres` o `supabase`) solo decide las capacidades
+extra: importación por PAT y consulta del estado cloud.
 
 ## Componentes
 
 | Componente | Qué hace |
 |---|---|
-| Bot de Telegram | `/proyectos`, `/backup <slug>`, `/status <slug>`, `/historial <slug>` |
+| Bot de Telegram | `/addbd`, `/proyectos`, `/backup <slug>`, `/test <slug>`, `/status <slug>`, `/historial <slug>` |
 | Frontend (SPA + PWA) | Panel React accesible desde el móvil, instalable como app |
 | Backend (API REST) | Auth JWT, CRUD de cuentas/proyectos/usuarios/permisos, log de auditoría |
 | Motor de backups | `pg_dump -Fc` en Python puro, rotación de los últimos N backups por proyecto |
@@ -27,7 +32,7 @@ y la misma base SQLite.
 │   ├── main.py                 # levanta la API + el bot en un solo proceso
 │   ├── db/schema.sql           # esquema SQLite
 │   ├── core/                   # config, conexión a BD, cifrado, JWT
-│   ├── services/               # capa de datos desacoplada (persistencia única)
+│   ├── services/               # capa de datos + proveedores (postgres | supabase)
 │   ├── backup/                 # ejecutor de pg_dump + comprobaciones de estado
 │   ├── bot/                    # aplicación del bot: application.py + handlers/ por dominio
 │   │   ├── application.py      # wiring de handlers y polling
@@ -35,7 +40,7 @@ y la misma base SQLite.
 │   ├── notify/                 # canal de notificación (Telegram)
 │   ├── api/                    # FastAPI: auth JWT + rutas REST en /api
 │   ├── .env                    # credenciales (ver backend/.env.example)
-│   └── Dockerfile              # python:3.12-slim + postgresql-client
+│   └── Dockerfile              # python:3.12-slim + postgresql-client-18 (PGDG)
 ├── frontend/
 │   ├── src/                    # React (Vite) + PWA (vite-plugin-pwa)
 │   ├── public/icons/           # iconos del manifesto (generados con scripts/generate-icons.mjs)
@@ -49,9 +54,11 @@ y la misma base SQLite.
 
 - Docker con Docker Compose (principal).
 - Un bot de Telegram creado con [@BotFather](https://t.me/BotFather) (necesitarás su token).
-- Los `project_ref` y las cadenas de conexión de tus proyectos de Supabase
-  (Dashboard → Project Settings → Database).
-- Un [Personal Access Token](https://supabase.com/dashboard/account/tokens) de Supabase.
+- Una **cadena de conexión de PostgreSQL** (`postgresql://usuario:clave@host:5432/base`)
+  por cada base que quieras respaldar. Debe ser accesible directamente (sin túneles SSH).
+- **Opcional (solo Supabase):** un
+  [Personal Access Token](https://supabase.com/dashboard/account/tokens) para
+  importar proyectos y consultar su estado cloud.
 
 ## Instalación (método principal: Docker)
 
@@ -94,22 +101,29 @@ El panel queda disponible en `http://localhost:8080`.
 
 - Entra con `WEB_ADMIN_USERNAME` / `WEB_ADMIN_PASSWORD` y **cambia la
   contraseña** desde *Usuarios Web*.
-- **Importa desde *Importar proyectos***: pega el PAT de Supabase, selecciona
-  los proyectos y en el mismo paso registra tu **usuario de Telegram**
-  (nombre + `chat_id`). Al confirmar se crea la cuenta, los proyectos y el
-  usuario con permisos sobre los proyectos importados.
-  - La conexión se toma **automáticamente por pooler** desde la Management API
-    (el PAT debe incluir el permiso `database_pooling_config_read`). Usa el
-    **modo session (`:5432`)**, recomendado para `pg_dump`. Si te pide la **contraseña de la
-    base de datos**, la inyecta en la connection string de cada proyecto
-    (en vez del marcador `[YOUR-PASSWORD]`) y puede **probar la conexión**
-    antes de guardar. La clave se cifra en reposo con `ENCRYPTION_KEY`.
-  - ¿Cómo saber tu `chat_id`? Márcale `/id` al bot en Telegram y te lo responde
-    en el propio chat (alternativa a los logs).
-  - Si prefieres, puedes crear cuentas y proyectos manualmente (CRUD en
-    *Cuentas* / *Proyectos*) y registrar usuarios desde *Usuarios Telegram*.
-    El rol `admin` de Telegram tiene permisos totales; los roles `usuario`
-    se configuran permiso a permiso por proyecto.
+- **Añade tus bases PostgreSQL** desde *Proyectos → Nuevo proyecto*: elige
+  proveedor **PostgreSQL directo**, pega la URI y usa **Probar** para validar
+  la conexión antes de guardar. Los proyectos directos se agrupan
+  automáticamente en el grupo del sistema *Conexiones directas*.
+  - Cada proyecto admite un **cron de 5 campos** para el respaldo automático
+    (ej. `30 3 * * *`; vacío = solo manual).
+  - En proyectos directos puedes activar `--no-owner` y `--no-privileges`
+    (recomendado si vas a restaurar en un servidor con otros usuarios).
+- **Opcional — Supabase:** usa *Importar proyectos* con tu PAT para importar
+  los proyectos de tu cuenta. La conexión se toma **automáticamente por
+  pooler** desde la Management API (el PAT debe incluir el permiso
+  `database_pooling_config_read`). Usa el **modo session (`:5432`)`,
+  recomendado para `pg_dump`. Si te pide la **contraseña de la base de datos**,
+  la inyecta en la connection string de cada proyecto (en vez del marcador
+  `[YOUR-PASSWORD]`) y puede **probar la conexión** antes de guardar. La clave
+  se cifra en reposo con `ENCRYPTION_KEY`.
+- ¿Cómo saber tu `chat_id`? Márcale `/id` al bot en Telegram y te lo responde
+  en el propio chat (alternativa a los logs).
+- También puedes crear cuentas y proyectos desde el propio bot con `/addbd`
+  (te pregunta si quieres importar de Supabase o usar una conexión directa) y
+  registrar usuarios desde *Usuarios Telegram*. El rol `admin` de Telegram
+  tiene permisos totales; los roles `usuario` se configuran permiso a permiso
+  por proyecto.
 
 Los datos (SQLite y backups) se guardan en `./data`, que es un volumen Docker:
 sobreviven a `docker compose down`.
@@ -144,16 +158,19 @@ pytest -p no:cacheprovider
 ```
 
 Los tests usan bases de datos temporales en `/tmp` (no tocan tus datos) y
-cubren slug, cifrado, barrido de claros, retención, permisos y RBAC vía API.
+cubren slug, cifrado, barrido de claros, retención, permisos, RBAC vía API,
+proveedores PostgreSQL/Supabase, parseo de DSN y construcción de `pg_dump`.
 
 ## Uso del bot de Telegram
 
 | Comando | Descripción |
 |---|---|
 | `/id` | Devuelve tu `chat_id` en el chat (sirve para darte de alta sin revisar logs) |
-| `/proyectos` | Lista los proyectos activos con su último backup |
+| `/addbd` | Agrega una base: importa un proyecto de Supabase o registra una URI directa |
+| `/proyectos` | Lista los proyectos activos con su proveedor y último backup |
 | `/backup <slug>` | Dispara un backup bajo demanda (formato `pg_dump -Fc`) |
-| `/status <slug>` | Comprueba conexión a la base y estado vía Management API |
+| `/test <slug>` | Prueba la conexión a la base (host, base y versión del servidor) |
+| `/status <slug>` | Comprueba la conexión y, en Supabase, el estado vía Management API |
 | `/historial <slug>` | Últimos backups del proyecto |
 
 Toda acción queda registrada en `audit_log` y en el historial
@@ -162,6 +179,10 @@ Toda acción queda registrada en `audit_log` y en el historial
 ## Seguridad
 
 - Credenciales cifradas en reposo con Fernet (clave maestra solo en `.env`).
+- `pg_dump`/`psql` reciben usuario, host y base como argumentos, pero **nunca
+  la contraseña**: esta viaja por variables de entorno de libpq (`PGPASSWORD`,
+  `PGSSLMODE`, `PGCONNECT_TIMEOUT`). Los mensajes del bot con una URI se
+  borran del chat tras leerlos.
 - Los archivos de backup (`.dump`/`.sql`) se cifran en disco con Fernet
   (`BACKUP_ENCRYPTION_KEY`) y su claro se borra; a Telegram se envían
   descifrados en memoria, sin tocar el disco.
@@ -231,6 +252,13 @@ incidentes están en **[`docs/DEPLOY_MODELO_A.md`](docs/DEPLOY_MODELO_A.md)**.
 
 ## Notas
 
+- **Proveedores:** `projects.provider` vale `postgres` (cualquier PostgreSQL
+  accesible por URI) o `supabase`. Los proyectos existentes se migran como
+  Supabase sin perder datos; los genéricos guardan `project_ref = ''` y se
+  agrupan en el grupo del sistema *Conexiones directas*. El estado cloud solo
+  se consulta en proyectos Supabase.
+- La imagen incluye `postgresql-client-18` (repositorio PGDG) para evitar
+  errores de versión al respaldar servidores PostgreSQL 17/18.
 - Los backups de proyectos son **bajo demanda** (por Telegram) o **programados**:
   cada proyecto admite un `schedule` en formato cron de 5 campos (minuto hora
   día mes día-semana, zona UTC), por ejemplo `30 3 * * *` = diario a las 03:30

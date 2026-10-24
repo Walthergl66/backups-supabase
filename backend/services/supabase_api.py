@@ -15,6 +15,7 @@ from urllib.parse import quote, urlparse, urlunparse
 import httpx
 
 from core import sanitize
+from services.pg_errors import friendly_db_error
 
 logger = logging.getLogger(__name__)
 
@@ -179,26 +180,6 @@ def _inject_password(connection: str, password: str | None) -> str:
     return urlunparse(
         (parsed.scheme, netloc, parsed.path, parsed.params, parsed.query, parsed.fragment)
     )
-
-
-def friendly_db_error(stderr: str) -> str:
-    """Traduce el stderr de psql a un mensaje amigable para el usuario."""
-    low = stderr.lower()
-    if "password authentication failed" in low or "no password supplied" in low:
-        return "la contraseña o el usuario de la base de datos son incorrectos"
-    if 'role "' in low and "does not exist" in low:
-        return "el usuario de la base de datos no existe"
-    if "does not exist" in low or "not found" in low:
-        return "el nombre de la base de datos no coincide con el proyecto"
-    if "could not translate host name" in low or "name or service not known" in low or "getaddrinfo" in low:
-        return "no se pudo resolver el servidor (revisa la URL o tu conexión a internet)"
-    if "timed out" in low or "timeout" in low or "time out" in low:
-        return "la conexión tardó demasiado y se canceló (probablemente tu red bloquea este servidor)"
-    if "connection refused" in low:
-        return "el servidor rechazó la conexión (puede estar apagado o bloqueado)"
-    if "ssl" in low:
-        return "falló el cifrado SSL de la conexión"
-    return "no se pudo conectar con el servidor de base de datos"
 
 
 def test_connection(connection: str, timeout: int = 15) -> tuple[bool, str]:

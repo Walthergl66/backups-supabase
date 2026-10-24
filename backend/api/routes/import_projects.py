@@ -84,7 +84,7 @@ async def create_imported_projects(request: Request, admin: dict = Depends(requi
 
     account_name = account_name or "Importada desde bot"
     try:
-        account_id = accounts_srv.create_account(account_name, pat)
+        account_id = accounts_srv.create_account(account_name, pat, provider="supabase")
     except accounts_srv.AccountError as exc:
         raise HTTPException(status_code=400, detail=f"Error al crear cuenta: {exc}")
 
@@ -115,7 +115,7 @@ async def create_imported_projects(request: Request, admin: dict = Depends(requi
         try:
             pid = projects_srv.create_project(
                 slug=slug, nombre=project_data["name"], account_id=account_id,
-                connection=connection, project_ref=ref,
+                connection=connection, project_ref=ref, provider="supabase",
             )
             created += 1
             created_ids.append(pid)
