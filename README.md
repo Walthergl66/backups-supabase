@@ -183,8 +183,9 @@ Toda acción queda registrada en `audit_log` y en el historial
   la contraseña**: esta viaja por variables de entorno de libpq (`PGPASSWORD`,
   `PGSSLMODE`, `PGCONNECT_TIMEOUT`). Los mensajes del bot con una URI se
   borran del chat tras leerlos.
-- Los archivos de backup (`.dump`/`.sql`) se cifran en disco con Fernet
-  (`BACKUP_ENCRYPTION_KEY`) y su claro se borra; a Telegram se envían
+- Los archivos de backup (`.dump`/`.sql`) se cifran en disco por bloques
+  Fernet (`BACKUP_ENCRYPTION_KEY`) y su claro se borra; se siguen aceptando
+  backups Fernet anteriores. A Telegram se envían
   descifrados en memoria, sin tocar el disco.
 - Contenedores sin privilegios: proceso como usuario no-root (UID 1000),
   capacidades eliminadas (`cap_drop: ALL`), `no-new-privileges` y rootfs de
@@ -200,7 +201,9 @@ Toda acción queda registrada en `audit_log` y en el historial
   se cachean de forma offline (las llamadas `/api` siempre van a red).
 - Cada request revalida el JWT contra la base de datos: si el usuario fue
   desactivado, eliminado o bloqueado, o su rol cambió, la sesión pierde
-  acceso al instante (no hace falta esperar a que expire el token).
+  acceso al instante (no hace falta esperar a que expire el token). Los JWT
+  cerrados explícitamente también se registran en SQLite hasta su expiración,
+  incluso tras reiniciar el backend.
 
 ## Gestión del sistema
 
