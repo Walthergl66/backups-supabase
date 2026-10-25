@@ -57,7 +57,7 @@ def resync() -> None:
         if not expr:
             continue
         try:
-            trigger = CronTrigger.from_crontab(expr)
+            trigger = CronTrigger.from_crontab(expr, timezone="UTC")
         except Exception as exc:  # noqa: BLE001 - cron inválido en BD
             logger.warning("Cron inválido '%s' en proyecto '%s': %s", expr, project["slug"], exc)
             continue

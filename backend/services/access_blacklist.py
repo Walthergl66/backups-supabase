@@ -59,4 +59,28 @@ class AccessBlacklist:
             del self._entries[k]
 
 
-blacklist = AccessBlacklist()
+class PersistentAccessBlacklist:
+    """Lista persistente para el proceso de aplicación (misma interfaz)."""
+
+    def revoke(self, jti: str, exp: int) -> None:
+        from core import db
+        db.execute(
+            "INSERT INTO access_token_revocations (jti, expires_at) VALUES (?, ?) "
+            "ON CONFLICT(jti) DO UPDATE SET expires_at = excluded.expires_at",
+            (jti, exp),
+        )
+
+    def is_revoked(self, jti: str | None) -> bool:
+        if not jti:
+            return False
+        from core import db
+        now = int(time.time())
+        with db.connect() as conn:
+            conn.execute("DELETE FROM access_token_revocations WHERE expires_at < ?", (now,))
+            return conn.execute(
+                "SELECT 1 FROM access_token_revocations WHERE jti = ? AND expires_at >= ?",
+                (jti, now),
+            ).fetchone() is not None
+
+
+blacklist = PersistentAccessBlacklist()

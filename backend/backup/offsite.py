@@ -123,20 +123,28 @@ def _apply_retention(client, cfg, keys: list[str], bucket: str | None = None) ->
     if not keys:
         return 0
 
+    deleted = 0
+    # Cada respaldo de proyecto se compone de .dump.enc y .sql.enc. La
+    # retención cuenta dumps y elimina la pareja completa, nunca archivos
+    # individuales ni self-backups.
+    dump_keys = [key for key in keys if key.endswith(".dump.enc")]
     groups: dict[str, list[str]] = {}
-    for key in keys:
+    for key in dump_keys:
         parent, _, _ = key.rpartition("/")
-        project = parent.rsplit("/", 1)[-1] if parent else key
+        project = parent.rsplit("/", 1)[-1] if parent else ""
         groups.setdefault(project, []).append(key)
 
-    deleted = 0
+    key_set = set(keys)
     for per_project in groups.values():
         if len(per_project) <= keep:
             continue
-        ordered = sorted(per_project)[: len(per_project) - keep]
-        for key in ordered:
-            client.delete_object(Bucket=bucket, Key=key)
-            deleted += 1
+        for dump_key in sorted(per_project)[: len(per_project) - keep]:
+            stem = dump_key[:-len(".dump.enc")]
+            pair = [dump_key, stem + ".sql.enc"]
+            for key in pair:
+                if key in key_set:
+                    client.delete_object(Bucket=bucket, Key=key)
+                    deleted += 1
     return deleted
 
 

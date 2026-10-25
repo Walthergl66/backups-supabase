@@ -97,7 +97,25 @@ def _disk_has_enough_space(directory: Path) -> tuple[bool, str]:
     return True, f"{free} MiB libres (mínimo {required} MiB)."
 
 
-def _dump_command(connection: str, dest: Path, options: dict) -> tuple[list[str], dict]:
+_ALLOWED_DUMP_FLAGS = ("no_owner", "no_privileges")
+_FLAG_TO_ARG = {
+    "no_owner": "--no-owner",
+    "no_privileges": "--no-privileges",
+}
+
+
+def _normalize_dump_flags(options) -> dict:
+    """Normaliza las opciones de pg_dump a un dict seguro."""
+    if not isinstance(options, dict):
+        return {}
+    normalized: dict[str, bool] = {}
+    for key in _ALLOWED_DUMP_FLAGS:
+        if key in options and options[key] is not None:
+            normalized[key] = bool(options[key])
+    return normalized
+
+
+def _dump_command(connection: str, dest: Path, options) -> tuple[list[str], dict]:
     """Construye el comando de pg_dump sin exponer la contraseña en argv.
 
     Las credenciales viajan por entorno (libpq) y los datos de conexión se
@@ -105,6 +123,7 @@ def _dump_command(connection: str, dest: Path, options: dict) -> tuple[list[str]
     conserva el comportamiento antiguo (`--dbname <cadena>`) por
     compatibilidad con proyectos creados antes de esta versión.
     """
+    flags = _normalize_dump_flags(options)
     args = [
         _pg_dump_binary(),
         "--format=custom",   # -Fc
@@ -130,10 +149,13 @@ def _dump_command(connection: str, dest: Path, options: dict) -> tuple[list[str]
             )
         )
 
-    if options.get("no_owner"):
-        args.append("--no-owner")
-    if options.get("no_privileges"):
-        args.append("--no-privileges")
+    for key in _ALLOWED_DUMP_FLAGS:
+        if flags.get(key):
+            args.append(_FLAG_TO_ARG[key])
+    if flags:
+        active = [k for k, v in flags.items() if v]
+        if active:
+            logger.debug("pg_dump flags aplicados: %s", ", ".join(active))
     return args, env
 
 
@@ -169,7 +191,7 @@ def _run_backup(project: dict) -> BackupResult:
         logger.error("Backup '%s' abortado: %s", slug, space_detail)
         return BackupResult(ok=False, detalle=space_detail, duracion_seg=time.monotonic() - start)
 
-    args, env = _dump_command(conn_str, dest, project.get("backup_options") or {})
+    args, env = _dump_command(conn_str, dest, project.get("backup_options"))
 
     logger.info("Iniciando backup del proyecto '%s'...", slug)
     try:
@@ -295,8 +317,9 @@ def verify_dump(dump_path: Path) -> tuple[bool, str]:
             check=False,
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
-        logger.warning("Verificación de restauración omitida para %s: %s", dump_path.name, exc)
-        return True, "verificación omitida (pg_restore no disponible)"
+        # Un backup que no pudo verificarse no debe comunicarse como válido.
+        logger.warning("Verificación de restauración falló para %s: %s", dump_path.name, exc)
+        return False, f"no se pudo ejecutar pg_restore --list: {exc}"
 
     if proc.returncode != 0:
         tail = sanitize.redact_secrets("\n".join((proc.stderr or "").splitlines()[-5:]))

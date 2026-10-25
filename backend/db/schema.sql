@@ -125,6 +125,12 @@ CREATE TABLE refresh_sessions (
     expires_at REAL NOT NULL                       -- epoch seconds
 );
 
+-- Revocaciones de access tokens sobreviven reinicios del backend.
+CREATE TABLE access_token_revocations (
+    jti TEXT PRIMARY KEY,
+    expires_at INTEGER NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_backup_history_project
     ON backup_history (project_id, fecha DESC);
 
@@ -142,3 +148,5 @@ CREATE INDEX IF NOT EXISTS idx_refresh_sessions_user
 
 CREATE INDEX IF NOT EXISTS idx_refresh_sessions_expiry
     ON refresh_sessions (expires_at);
+CREATE INDEX IF NOT EXISTS idx_access_token_revocations_expiry
+    ON access_token_revocations (expires_at);

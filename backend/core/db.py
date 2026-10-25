@@ -16,7 +16,7 @@ from core.config import settings
 
 # Versión del esquema. Se incrementa con cada migración incremental para
 # poder auditar en qué estado está una base existente.
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 # Cuenta/grupo por defecto para proyectos PostgreSQL sin proveedor cloud.
 DEFAULT_GROUP_NAME = "Conexiones directas"
@@ -68,18 +68,32 @@ def _migrate() -> None:
             expires_at REAL NOT NULL
         )
         """,
+        """
+        CREATE TABLE IF NOT EXISTS access_token_revocations (
+            jti TEXT PRIMARY KEY,
+            expires_at INTEGER NOT NULL
+        )
+        """,
     ]
     with connect() as conn:
         for statement in statements:
             try:
                 conn.execute(statement)
-            except sqlite3.OperationalError:
-                pass  # La columna ya existe
+            except sqlite3.OperationalError as exc:
+                # ALTER TABLE repetido es la única excepción esperada aquí.
+                # No ocultar errores de esquema o de disco.
+                if not (statement.lstrip().upper().startswith("ALTER TABLE")
+                        and "duplicate column name" in str(exc).lower()):
+                    raise
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_refresh_sessions_user ON refresh_sessions (user_id)"
         )
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_refresh_sessions_expiry ON refresh_sessions (expires_at)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_access_token_revocations_expiry "
+            "ON access_token_revocations (expires_at)"
         )
         _ensure_default_group(conn)
         conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
