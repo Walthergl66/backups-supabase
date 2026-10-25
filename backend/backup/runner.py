@@ -317,8 +317,9 @@ def verify_dump(dump_path: Path) -> tuple[bool, str]:
             check=False,
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
-        logger.warning("Verificación de restauración omitida para %s: %s", dump_path.name, exc)
-        return True, "verificación omitida (pg_restore no disponible)"
+        # Un backup que no pudo verificarse no debe comunicarse como válido.
+        logger.warning("Verificación de restauración falló para %s: %s", dump_path.name, exc)
+        return False, f"no se pudo ejecutar pg_restore --list: {exc}"
 
     if proc.returncode != 0:
         tail = sanitize.redact_secrets("\n".join((proc.stderr or "").splitlines()[-5:]))
